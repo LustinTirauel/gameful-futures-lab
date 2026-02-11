@@ -5,6 +5,8 @@ import { SiteLayout } from './layout/SiteLayout';
 import { HomePage } from './pages/HomePage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { PeoplePage } from './pages/PeoplePage';
+import App from './App';
+import './styles/theme.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
