@@ -35,7 +35,7 @@ export function LabScene(): JSX.Element {
       </group>
 
       {people.map((person) => (
-        <CharacterAgent key={person.id} id={person.id} color={person.color} target={targets[person.id]} />
+        <CharacterAgent key={person.id} id={person.id} color={person.avatarColor} target={targets[person.id]} />
       ))}
 
       <OrbitControls enablePan={false} minPolarAngle={0.6} maxPolarAngle={1.2} minDistance={8} maxDistance={16} />
