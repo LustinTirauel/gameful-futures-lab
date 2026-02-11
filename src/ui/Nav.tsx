@@ -8,23 +8,14 @@ export function Nav(): JSX.Element {
   const setRoute = useLabWorldStore((state) => state.setRoute);
 
   return (
-    <nav style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1rem' }}>
+    <nav className="app-nav" aria-label="Lab navigation">
       {routes.map((routeKey) => {
         const active = routeKey === route;
         return (
           <button
             key={routeKey}
             onClick={() => setRoute(routeKey)}
-            style={{
-              textTransform: 'capitalize',
-              borderRadius: '999px',
-              border: active ? '2px solid #5e548e' : '1px solid #9f86c0',
-              background: active ? '#e0b1cb' : '#fff',
-              color: '#231942',
-              padding: '0.45rem 1rem',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
+            className={`app-nav__button ${active ? 'app-nav__button--active' : ''}`}
           >
             {routeKey}
           </button>
