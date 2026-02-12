@@ -5,7 +5,53 @@ export type Person = {
   name: string;
   bio: string;
   tags: string[];
+  tileX: number;
+  tileY: number;
+  x: number;
+  y: number;
+  zIndex: number;
 };
+
+type ScenePlacement = {
+  tileX: number;
+  tileY: number;
+  x: number;
+  y: number;
+  zIndex: number;
+};
+
+const isoSceneConfig = {
+  originXPercent: 50,
+  originYPercent: 64,
+  tileWidthPercent: 12,
+  tileHeightPercent: 6.5,
+  depthBase: 10,
+  depthStep: 4,
+  /**
+   * Guardrails for future expansion:
+   * - Keep Manhattan distance >= minTileGap between any two members to avoid silhouette overlap.
+   * - Keep at most maxMembersPerTileCluster within a 3x3 cluster to prevent density spikes.
+   */
+  minTileGap: 1,
+  maxMembersPerTileCluster: 3,
+} as const;
+
+function createScenePlacement(tileX: number, tileY: number): ScenePlacement {
+  const x =
+    isoSceneConfig.originXPercent +
+    (tileX - tileY) * (isoSceneConfig.tileWidthPercent / 2);
+  const y =
+    isoSceneConfig.originYPercent +
+    (tileX + tileY) * (isoSceneConfig.tileHeightPercent / 2);
+
+  return {
+    tileX,
+    tileY,
+    x,
+    y,
+    zIndex: isoSceneConfig.depthBase + (tileX + tileY) * isoSceneConfig.depthStep,
+  };
+}
 
 export type Project = {
   id: string;
@@ -16,11 +62,41 @@ export type Project = {
 };
 
 export const people: Person[] = [
-  { id: 'alex', name: 'Alex', bio: 'Designs playful foresight methods.', tags: ['supervisor', 'qualitative'] },
-  { id: 'bea', name: 'Bea', bio: 'Builds interactive world systems.', tags: ['quantitative', 'simulation'] },
-  { id: 'chen', name: 'Chen', bio: 'Studies game narratives and futures.', tags: ['storytelling'] },
-  { id: 'dina', name: 'Dina', bio: 'Runs lab operations and outreach.', tags: ['coordination'] },
-  { id: 'eli', name: 'Eli', bio: 'Explores playful learning ecosystems.', tags: ['supervisor', 'learning'] },
+  {
+    id: 'alex',
+    name: 'Alex',
+    bio: 'Designs playful foresight methods.',
+    tags: ['supervisor', 'qualitative'],
+    ...createScenePlacement(-2, 0),
+  },
+  {
+    id: 'bea',
+    name: 'Bea',
+    bio: 'Builds interactive world systems.',
+    tags: ['quantitative', 'simulation'],
+    ...createScenePlacement(-1, 1),
+  },
+  {
+    id: 'chen',
+    name: 'Chen',
+    bio: 'Studies game narratives and futures.',
+    tags: ['storytelling'],
+    ...createScenePlacement(0, 0),
+  },
+  {
+    id: 'dina',
+    name: 'Dina',
+    bio: 'Runs lab operations and outreach.',
+    tags: ['coordination'],
+    ...createScenePlacement(1, 1),
+  },
+  {
+    id: 'eli',
+    name: 'Eli',
+    bio: 'Explores playful learning ecosystems.',
+    tags: ['supervisor', 'learning'],
+    ...createScenePlacement(2, 0),
+  },
 ];
 
 export const characterConfigs: Record<Person['id'], CharacterConfig> = {
