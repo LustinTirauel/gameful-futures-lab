@@ -1,32 +1,66 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
-import { useEffect, useMemo, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Group } from 'three';
+import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
+type MovementBehavior = 'idle' | 'run';
+
 type LandingScene3DProps = {
+  characters: Array<{ id: string; config: CharacterConfig }>;
+  movementBehavior?: MovementBehavior;
   onRuntimeError?: () => void;
 };
 
-type CharacterSetup = {
+function CharacterGroup({
+  id,
+  config,
+  movementBehavior,
+}: {
   id: string;
-  pose: 'fishing' | 'sleeping' | 'chatting' | 'campfire-sit' | 'standing';
-  position: [number, number, number];
-  rotation: [number, number, number];
-  headShape: 'sphere' | 'box' | 'cone';
-  bodyShape: 'box' | 'cylinder' | 'cone';
-  legShape: 'box' | 'cylinder';
-  accessories: ('hat' | 'backpack' | 'fishingRod' | 'pillow' | 'speechBubble' | 'mug')[];
-  colors: {
-    skin: string;
-    body: string;
-    legs: string;
-    feet: string;
-    accessory: string;
-  };
-};
+  config: CharacterConfig;
+  movementBehavior: MovementBehavior;
+}) {
+  const groupRef = useRef<Group>(null);
 
-export default function LandingScene3D({ onRuntimeError }: LandingScene3DProps) {
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+
+    const [baseX, baseY, baseZ] = config.position;
+
+    if (movementBehavior === 'run') {
+      const t = clock.elapsedTime;
+      const phaseOffset = id.charCodeAt(0) * 0.18;
+      const stride = Math.sin(t * 2.7 + phaseOffset) * 0.18;
+      const bob = Math.abs(Math.sin(t * 5.4 + phaseOffset)) * 0.045;
+      groupRef.current.position.x = baseX + stride;
+      groupRef.current.position.y = baseY + bob;
+      groupRef.current.position.z = baseZ;
+    } else {
+      groupRef.current.position.x = baseX;
+      groupRef.current.position.y = baseY;
+      groupRef.current.position.z = baseZ;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <PrimitiveCharacter
+        pose={config.pose}
+        rotation={config.rotation}
+        headShape={config.headShape}
+        bodyShape={config.bodyShape}
+        legShape={config.legShape}
+        accessories={config.accessories}
+        colors={config.colors}
+      />
+    </group>
+  );
+}
+
+export default function LandingScene3D({ characters, movementBehavior = 'idle', onRuntimeError }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -45,95 +79,9 @@ export default function LandingScene3D({ onRuntimeError }: LandingScene3DProps) 
     }
   }, [onRuntimeError]);
 
-  const characters = useMemo<CharacterSetup[]>(
-    () => [
-      {
-        id: 'fishing',
-        pose: 'fishing',
-        position: [-1.65, -0.2, 0.45],
-        rotation: [0, 0.45, 0],
-        headShape: 'sphere',
-        bodyShape: 'cylinder',
-        legShape: 'box',
-        accessories: ['fishingRod', 'hat'],
-        colors: {
-          skin: '#ffd4aa',
-          body: '#5ca5d8',
-          legs: '#385a79',
-          feet: '#233448',
-          accessory: '#f2b96a',
-        },
-      },
-      {
-        id: 'sleeping',
-        pose: 'sleeping',
-        position: [-0.65, -0.22, 0.7],
-        rotation: [0, -0.15, 0],
-        headShape: 'box',
-        bodyShape: 'box',
-        legShape: 'box',
-        accessories: ['pillow'],
-        colors: {
-          skin: '#f7d2b1',
-          body: '#8bb17f',
-          legs: '#566a50',
-          feet: '#374630',
-          accessory: '#d9f2ff',
-        },
-      },
-      {
-        id: 'chatting',
-        pose: 'chatting',
-        position: [0.35, -0.2, 0.35],
-        rotation: [0, -0.25, 0],
-        headShape: 'cone',
-        bodyShape: 'cone',
-        legShape: 'cylinder',
-        accessories: ['speechBubble', 'backpack'],
-        colors: {
-          skin: '#f7d4c0',
-          body: '#cb8bb8',
-          legs: '#755282',
-          feet: '#4f3657',
-          accessory: '#f7f0cb',
-        },
-      },
-      {
-        id: 'campfire-sit',
-        pose: 'campfire-sit',
-        position: [1.2, -0.23, 0.5],
-        rotation: [0, -0.8, 0],
-        headShape: 'sphere',
-        bodyShape: 'box',
-        legShape: 'cylinder',
-        accessories: ['mug'],
-        colors: {
-          skin: '#ffd0b8',
-          body: '#cb7b65',
-          legs: '#7c4a4f',
-          feet: '#50333a',
-          accessory: '#f6c36f',
-        },
-      },
-      {
-        id: 'standing',
-        pose: 'standing',
-        position: [1.95, -0.2, 0.2],
-        rotation: [0, -0.3, 0],
-        headShape: 'box',
-        bodyShape: 'cylinder',
-        legShape: 'box',
-        accessories: ['hat', 'backpack'],
-        colors: {
-          skin: '#ffd8b5',
-          body: '#6fb790',
-          legs: '#3f6c57',
-          feet: '#2f4d3f',
-          accessory: '#ffde8f',
-        },
-      },
-    ],
-    [],
+  const orderedCharacters = useMemo(
+    () => [...characters].sort((a, b) => a.id.localeCompare(b.id)),
+    [characters],
   );
 
   if (!isWebGLAvailable) {
@@ -165,17 +113,12 @@ export default function LandingScene3D({ onRuntimeError }: LandingScene3DProps) 
           <pointLight position={[0, 0.25, 0]} intensity={0.5} distance={2.4} color="#ffb566" />
         </group>
 
-        {characters.map((character) => (
-          <PrimitiveCharacter
+        {orderedCharacters.map((character) => (
+          <CharacterGroup
             key={character.id}
-            pose={character.pose}
-            position={character.position}
-            rotation={character.rotation}
-            headShape={character.headShape}
-            bodyShape={character.bodyShape}
-            legShape={character.legShape}
-            accessories={character.accessories}
-            colors={character.colors}
+            id={character.id}
+            config={character.config}
+            movementBehavior={movementBehavior}
           />
         ))}
       </Canvas>

@@ -3,9 +3,15 @@
 import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import LandingScene3D from './components/LandingScene3D';
-import { people, projects } from './data/content';
+import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
+
+const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
+  home: 'idle',
+  people: 'run',
+  projects: 'run',
+};
 
 function CharacterBlocks({
   mode,
@@ -25,7 +31,7 @@ function CharacterBlocks({
   return (
     <section className="characters">
       {(selectedMode === 'people' ? sortedPeople : people).map((person, index) => {
-        const running = selectedMode !== 'home';
+        const running = modeMovementBehavior[selectedMode] === 'run';
         return (
           <motion.article
             key={`${selectedMode}-${person.id}`}
@@ -64,10 +70,20 @@ export default function Home() {
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const project = projects.find((item) => item.id === selectedProject);
+  const sceneCharacters = useMemo(
+    () => people.map((person) => ({ id: person.id, config: characterConfigs[person.id] })),
+    [],
+  );
 
   return (
     <main className="main">
-      {mode === 'home' && !scene3DFailed && <LandingScene3D onRuntimeError={() => setScene3DFailed(true)} />}
+      {mode === 'home' && !scene3DFailed && (
+        <LandingScene3D
+          characters={sceneCharacters}
+          movementBehavior={modeMovementBehavior[mode]}
+          onRuntimeError={() => setScene3DFailed(true)}
+        />
+      )}
 
       <nav className="nav">
         {(['home', 'people', 'projects'] as Mode[]).map((item) => (
