@@ -2,21 +2,73 @@
 
 import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import LandingScene3D from './components/LandingScene3D';
 import { people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
+
+function CharacterBlocks({
+  mode,
+  selectedMode,
+  reactionId,
+  onReact,
+  onSelectPerson
+}: {
+  mode: Mode;
+  selectedMode: Mode;
+  reactionId: string | null;
+  onReact: (personId: string) => void;
+  onSelectPerson: (personId: string) => void;
+}) {
+  const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
+
+  return (
+    <section className="characters">
+      {(selectedMode === 'people' ? sortedPeople : people).map((person, index) => {
+        const running = selectedMode !== 'home';
+        return (
+          <motion.article
+            key={`${selectedMode}-${person.id}`}
+            className="char"
+            initial={{ x: -180, opacity: 0.7 }}
+            animate={{
+              x: running ? index * 8 : 0,
+              y: reactionId === person.id ? -16 : 0,
+              opacity: 1,
+              rotate: running ? [0, -2, 2, 0] : 0
+            }}
+            transition={{ duration: running ? 0.9 : 0.35 }}
+            onClick={() => {
+              if (mode === 'home') {
+                onReact(person.id);
+              } else if (mode === 'people') {
+                onSelectPerson(person.id);
+              }
+            }}
+          >
+            {selectedMode === 'people' && <span className="nameplate">{person.name}</span>}
+            {selectedMode === 'home' ? '🙂' : '🏃'}
+          </motion.article>
+        );
+      })}
+    </section>
+  );
+}
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>('home');
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [reactionId, setReactionId] = useState<string | null>(null);
+  const [scene3DFailed, setScene3DFailed] = useState(false);
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const project = projects.find((item) => item.id === selectedProject);
 
   return (
     <main className="main">
+      {mode === 'home' && !scene3DFailed && <LandingScene3D onRuntimeError={() => setScene3DFailed(true)} />}
+
       <nav className="nav">
         {(['home', 'people', 'projects'] as Mode[]).map((item) => (
           <button
@@ -40,41 +92,36 @@ export default function Home() {
         </div>
       )}
 
-      <section className="characters">
-        {(mode === 'people' ? sortedPeople : people).map((person, index) => {
-          const running = mode !== 'home';
-          return (
-            <motion.article
-              key={`${mode}-${person.id}`}
-              className="char"
-              initial={{ x: -180, opacity: 0.7 }}
-              animate={{
-                x: running ? index * 8 : 0,
-                y: reactionId === person.id ? -16 : 0,
-                opacity: 1,
-                rotate: running ? [0, -2, 2, 0] : 0
-              }}
-              transition={{ duration: running ? 0.9 : 0.35 }}
-              onClick={() => {
-                if (mode === 'home') {
-                  setReactionId(person.id);
-                  setTimeout(() => setReactionId(null), 500);
-                } else if (mode === 'people') {
-                  setSelectedPerson(person.id);
-                }
-              }}
-            >
-              {mode === 'people' && <span className="nameplate">{person.name}</span>}
-              {mode === 'home' ? '🙂' : '🏃'}
-            </motion.article>
-          );
-        })}
-      </section>
+      {mode === 'home' && scene3DFailed && (
+        <CharacterBlocks
+          mode="home"
+          selectedMode="home"
+          reactionId={reactionId}
+          onReact={(personId) => {
+            setReactionId(personId);
+            setTimeout(() => setReactionId(null), 500);
+          }}
+          onSelectPerson={() => undefined}
+        />
+      )}
+
+      {mode !== 'home' && (
+        <CharacterBlocks
+          mode={mode}
+          selectedMode={mode}
+          reactionId={reactionId}
+          onReact={(personId) => {
+            setReactionId(personId);
+            setTimeout(() => setReactionId(null), 500);
+          }}
+          onSelectPerson={(personId) => setSelectedPerson(personId)}
+        />
+      )}
 
       {mode === 'people' && selectedPerson && (
         <aside className="panel">
           {(() => {
-            const person = people.find((item) => item.id === selectedPerson);
+            const person = sortedPeople.find((item) => item.id === selectedPerson);
             if (!person) return null;
             return (
               <>
