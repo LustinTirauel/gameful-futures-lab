@@ -1,8 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D from './components/LandingScene3D';
+import PeoplePanel from './components/PeoplePanel';
+import ProjectsLayer from './components/ProjectsLayer';
+import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
@@ -13,54 +16,6 @@ const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   projects: 'run',
 };
 
-function CharacterBlocks({
-  mode,
-  selectedMode,
-  reactionId,
-  onReact,
-  onSelectPerson
-}: {
-  mode: Mode;
-  selectedMode: Mode;
-  reactionId: string | null;
-  onReact: (personId: string) => void;
-  onSelectPerson: (personId: string) => void;
-}) {
-  const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
-
-  return (
-    <section className="characters">
-      {(selectedMode === 'people' ? sortedPeople : people).map((person, index) => {
-        const running = modeMovementBehavior[selectedMode] === 'run';
-        return (
-          <motion.article
-            key={`${selectedMode}-${person.id}`}
-            className="char"
-            initial={{ x: -180, opacity: 0.7 }}
-            animate={{
-              x: running ? index * 8 : 0,
-              y: reactionId === person.id ? -16 : 0,
-              opacity: 1,
-              rotate: running ? [0, -2, 2, 0] : 0
-            }}
-            transition={{ duration: running ? 0.9 : 0.35 }}
-            onClick={() => {
-              if (mode === 'home') {
-                onReact(person.id);
-              } else if (mode === 'people') {
-                onSelectPerson(person.id);
-              }
-            }}
-          >
-            {selectedMode === 'people' && <span className="nameplate">{person.name}</span>}
-            {selectedMode === 'home' ? '🙂' : '🏃'}
-          </motion.article>
-        );
-      })}
-    </section>
-  );
-}
-
 export default function Home() {
   const [mode, setMode] = useState<Mode>('home');
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
@@ -69,11 +24,38 @@ export default function Home() {
   const [scene3DFailed, setScene3DFailed] = useState(false);
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
-  const project = projects.find((item) => item.id === selectedProject);
   const sceneCharacters = useMemo(
     () => people.map((person) => ({ id: person.id, config: characterConfigs[person.id] })),
     [],
   );
+
+  /** Switches top-level mode and clears mode-specific selections. */
+  function handleModeChange(nextMode: Mode) {
+    setMode(nextMode);
+    setSelectedPerson(null);
+    setSelectedProject(null);
+  }
+
+  /** Triggers a brief character reaction bounce in home mode. */
+  function handleCharacterReact(personId: string) {
+    setReactionId(personId);
+    setTimeout(() => setReactionId(null), 500);
+  }
+
+  /** Stores the currently focused person for the people panel. */
+  function handleCharacterSelect(personId: string) {
+    setSelectedPerson(personId);
+  }
+
+  /** Stores the currently focused project for the project detail panel. */
+  function handleProjectSelect(projectId: string) {
+    setSelectedProject(projectId);
+  }
+
+  /** Records 3D scene runtime failures and enables fallback rendering. */
+  function handleSceneRuntimeError() {
+    setScene3DFailed(true);
+  }
 
   return (
     <main className="main">
@@ -81,26 +63,14 @@ export default function Home() {
         <LandingScene3D
           characters={sceneCharacters}
           movementBehavior={modeMovementBehavior[mode]}
-          onRuntimeError={() => setScene3DFailed(true)}
+          onRuntimeError={handleSceneRuntimeError}
         />
       )}
 
-      <nav className="nav">
-        {(['home', 'people', 'projects'] as Mode[]).map((item) => (
-          <button
-            key={item}
-            className={item === mode ? 'active' : ''}
-            onClick={() => {
-              setMode(item);
-              setSelectedPerson(null);
-              setSelectedProject(null);
-            }}
-          >
-            {item[0].toUpperCase() + item.slice(1)}
-          </button>
-        ))}
-      </nav>
+      {/* navigation mode switching */}
+      <TopNav mode={mode} onModeChange={handleModeChange} />
 
+      {/* home hero rendering */}
       {mode === 'home' && (
         <div className="center-copy">
           <h1>Gameful Futures Lab</h1>
@@ -108,70 +78,27 @@ export default function Home() {
         </div>
       )}
 
-      {mode === 'home' && scene3DFailed && (
-        <CharacterBlocks
-          mode="home"
-          selectedMode="home"
-          reactionId={reactionId}
-          onReact={(personId) => {
-            setReactionId(personId);
-            setTimeout(() => setReactionId(null), 500);
-          }}
-          onSelectPerson={() => undefined}
-        />
-      )}
-
-      {mode !== 'home' && (
-        <CharacterBlocks
+      {/* character rendering and interaction */}
+      {(mode !== 'home' || scene3DFailed) && (
+        <CharacterLayer
           mode={mode}
-          selectedMode={mode}
           reactionId={reactionId}
-          onReact={(personId) => {
-            setReactionId(personId);
-            setTimeout(() => setReactionId(null), 500);
-          }}
-          onSelectPerson={(personId) => setSelectedPerson(personId)}
+          movementBehavior={modeMovementBehavior[mode]}
+          onReact={handleCharacterReact}
+          onSelectPerson={handleCharacterSelect}
         />
       )}
 
-      {mode === 'people' && selectedPerson && (
-        <aside className="panel">
-          {(() => {
-            const person = sortedPeople.find((item) => item.id === selectedPerson);
-            if (!person) return null;
-            return (
-              <>
-                <h3>{person.name}</h3>
-                <p>{person.bio}</p>
-                <p>
-                  <strong>Tags:</strong> {person.tags.join(', ')}
-                </p>
-              </>
-            );
-          })()}
-        </aside>
-      )}
+      {/* people panel rendering */}
+      {mode === 'people' && <PeoplePanel people={sortedPeople} selectedPerson={selectedPerson} />}
 
+      {/* projects plate/detail rendering */}
       {mode === 'projects' && (
-        <section className="plates">
-          {projects.map((item) => (
-            <article key={item.id} className="plate" onClick={() => setSelectedProject(item.id)}>
-              <h3>{item.title}</h3>
-              <p>{item.summary}</p>
-            </article>
-          ))}
-        </section>
-      )}
-
-      {mode === 'projects' && project && (
-        <aside className="panel">
-          <h3>{project.title}</h3>
-          <p>{project.summary}</p>
-          <div dangerouslySetInnerHTML={{ __html: project.detailsHtml }} />
-          <p>
-            <strong>Team:</strong> {project.memberIds.join(', ')}
-          </p>
-        </aside>
+        <ProjectsLayer
+          projects={projects}
+          selectedProject={selectedProject}
+          onProjectSelect={handleProjectSelect}
+        />
       )}
 
       <section className="future">
