@@ -1,5 +1,7 @@
 'use client';
 
+// Page flow keeps discovery simple by moving visitors from home -> people -> projects.
+
 import { useMemo, useState } from 'react';
 import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D from './components/LandingScene3D';
@@ -18,8 +20,11 @@ const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>('home');
+  // Tracks which person should stay expanded so users can compare profiles without losing context.
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
+  // Keeps one project detail pinned while people browse the full project list.
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  // Stores the currently reacting character so clicks feel acknowledged in the 2D fallback strip.
   const [reactionId, setReactionId] = useState<string | null>(null);
   const [scene3DFailed, setScene3DFailed] = useState(false);
 
@@ -36,8 +41,8 @@ export default function Home() {
     setSelectedProject(null);
   }
 
-  /** Triggers a brief character reaction bounce in home mode. */
-  function handleCharacterReact(personId: string) {
+  /** Triggers a brief character reaction bounce when a character is clicked. */
+  function handleCharacterClick(personId: string) {
     setReactionId(personId);
     setTimeout(() => setReactionId(null), 500);
   }
@@ -67,10 +72,10 @@ export default function Home() {
         />
       )}
 
-      {/* navigation mode switching */}
+      {/* Keeps mode switching always visible so users can jump between major sections quickly. */}
       <TopNav mode={mode} onModeChange={handleModeChange} />
 
-      {/* home hero rendering */}
+      {/* Anchors the home mode with a concise mission statement before deeper exploration. */}
       {mode === 'home' && (
         <div className="center-copy">
           <h1>Gameful Futures Lab</h1>
@@ -78,21 +83,21 @@ export default function Home() {
         </div>
       )}
 
-      {/* character rendering and interaction */}
+      {/* Provides a reliable character strip when home is not active or 3D is unavailable. */}
       {(mode !== 'home' || scene3DFailed) && (
         <CharacterLayer
           mode={mode}
           reactionId={reactionId}
           movementBehavior={modeMovementBehavior[mode]}
-          onReact={handleCharacterReact}
+          onReact={handleCharacterClick}
           onSelectPerson={handleCharacterSelect}
         />
       )}
 
-      {/* people panel rendering */}
+      {/* Focuses attention on people bios to support team discovery before project deep-dives. */}
       {mode === 'people' && <PeoplePanel people={sortedPeople} selectedPerson={selectedPerson} />}
 
-      {/* projects plate/detail rendering */}
+      {/* Keeps project browsing in its own mode so details can expand without crowding other content. */}
       {mode === 'projects' && (
         <ProjectsLayer
           projects={projects}
@@ -101,6 +106,7 @@ export default function Home() {
         />
       )}
 
+      {/* Signals planned roadmap items so contributors understand where this experience is heading next. */}
       <section className="future">
         <strong>Prepared for next versions:</strong>
         <ul>
