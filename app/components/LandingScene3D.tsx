@@ -1,6 +1,6 @@
 'use client';
 
-import { Html } from '@react-three/drei';
+import { Text } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
@@ -209,7 +209,7 @@ function DraggableCharacter({
     const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
     groupRef.current.position.y = override.y + bob;
 
-    const desiredRotY = isPeopleMode && !editMode ? Math.PI : override.rotY;
+    const desiredRotY = isPeopleMode && !editMode ? -Math.PI * 1.5 : override.rotY;
     const desiredRotX = isPeopleMode && !editMode ? 0 : override.rotX;
     const desiredRotZ = isPeopleMode && !editMode ? 0 : override.rotZ;
     groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.14;
@@ -306,16 +306,23 @@ function NamePlate3D({ name, position }: { name: string; position: [number, numb
   return (
     <group position={position}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <boxGeometry args={[1.4, 0.06, 0.45]} />
-        <meshStandardMaterial color="#2f3a33" />
+        <boxGeometry args={[1.8, 0.08, 0.68]} />
+        <meshStandardMaterial color="#1f2522" />
       </mesh>
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[1.15, 0.28]} />
-        <meshStandardMaterial color="#dce9dd" />
+        <boxGeometry args={[1.62, 0.02, 0.5]} />
+        <meshStandardMaterial color="#dfe7e1" />
       </mesh>
-      <Html position={[0, 0.08, 0]} transform occlude>
-        <div className="nameplate-3d-label">{name}</div>
-      </Html>
+      <Text
+        position={[0, 0.07, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={0.12}
+        color="#162018"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {name}
+      </Text>
     </group>
   );
 }
@@ -326,12 +333,14 @@ function DraggableFire({
   editMode,
   onSelect,
   onOverrideChange,
+  alpha = 1,
 }: {
   override: ModelOverride;
   selected: boolean;
   editMode: boolean;
   onSelect: (modelId: string) => void;
   onOverrideChange: (next: ModelOverride) => void;
+  alpha?: number;
 }) {
   const flameRef = useRef<Mesh>(null);
   const lightRef = useRef<PointLight>(null);
@@ -413,24 +422,24 @@ function DraggableFire({
     >
       <mesh castShadow>
         <cylinderGeometry args={[0.18, 0.22, 0.12, 6]} />
-        <meshStandardMaterial color="#6b4b37" flatShading />
+        <meshStandardMaterial color="#6b4b37" flatShading transparent opacity={alpha} />
       </mesh>
       <mesh ref={flameRef} position={[0, 0.14, 0]} castShadow>
         <coneGeometry args={[0.13, 0.25, 6]} />
-        <meshStandardMaterial color="#fca75f" emissive="#f57f45" emissiveIntensity={0.5} flatShading />
+        <meshStandardMaterial color="#fca75f" emissive="#f57f45" emissiveIntensity={0.5 * alpha} flatShading transparent opacity={alpha} />
       </mesh>
-      <pointLight ref={lightRef} position={[0, 0.25, 0]} intensity={0.5} distance={2.4} color="#ffb566" />
+      <pointLight ref={lightRef} position={[0, 0.25, 0]} intensity={0.5 * alpha} distance={2.4} color="#ffb566" />
       {selected && editMode && (
         <mesh position={[0, 0.45, 0]}>
           <sphereGeometry args={[0.06, 10, 10]} />
-          <meshBasicMaterial color="#ffde8f" />
+          <meshBasicMaterial color="#ffde8f" transparent opacity={alpha} />
         </mesh>
       )}
     </group>
   );
 }
 
-function EnvironmentProps() {
+function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
   const pondRef = useRef<Mesh>(null);
   const treeTopRefs = useRef<Array<Group | null>>([]);
   const smokeRefs = useRef<Array<Mesh | null>>([]);
@@ -480,11 +489,11 @@ function EnvironmentProps() {
       <group position={[-3.8, -0.42, 2.35]}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[1.65, 36]} />
-          <meshStandardMaterial color="#2d6d71" flatShading />
+          <meshStandardMaterial color="#2d6d71" flatShading transparent opacity={alpha} />
         </mesh>
         <mesh ref={pondRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <circleGeometry args={[1.45, 36]} />
-          <meshStandardMaterial color="#70bec8" transparent opacity={0.78} roughness={0.3} />
+          <meshStandardMaterial color="#70bec8" transparent opacity={0.78 * alpha} roughness={0.3} />
         </mesh>
       </group>
 
@@ -492,18 +501,18 @@ function EnvironmentProps() {
         <group key={`tree-${index}`} position={position}>
           <mesh castShadow position={[0, 0.5, 0]}>
             <cylinderGeometry args={[0.1, 0.14, 1.1, 8]} />
-            <meshStandardMaterial color="#6d4a35" flatShading />
+            <meshStandardMaterial color="#6d4a35" flatShading transparent opacity={alpha} />
           </mesh>
           <group ref={(node) => {
               treeTopRefs.current[index] = node;
             }} position={[0, 1.2, 0]}>
             <mesh castShadow>
               <coneGeometry args={[0.62, 1.1, 10]} />
-              <meshStandardMaterial color="#4f8d53" flatShading />
+              <meshStandardMaterial color="#4f8d53" flatShading transparent opacity={alpha} />
             </mesh>
             <mesh castShadow position={[0, 0.42, 0]}>
               <coneGeometry args={[0.45, 0.85, 10]} />
-              <meshStandardMaterial color="#5aa25d" flatShading />
+              <meshStandardMaterial color="#5aa25d" flatShading transparent opacity={alpha} />
             </mesh>
           </group>
         </group>
@@ -512,15 +521,15 @@ function EnvironmentProps() {
       <group position={[3.6, -0.45, -2.3]}>
         <mesh castShadow position={[0, 0.4, 0]}>
           <boxGeometry args={[1.8, 0.8, 1.4]} />
-          <meshStandardMaterial color="#7a5a3f" flatShading />
+          <meshStandardMaterial color="#7a5a3f" flatShading transparent opacity={alpha} />
         </mesh>
         <mesh castShadow position={[0, 1, 0]}>
           <coneGeometry args={[1.25, 0.85, 4]} />
-          <meshStandardMaterial color="#5b3f2e" flatShading />
+          <meshStandardMaterial color="#5b3f2e" flatShading transparent opacity={alpha} />
         </mesh>
         <mesh castShadow position={[0.6, 1.65, 0.15]}>
           <boxGeometry args={[0.24, 0.55, 0.24]} />
-          <meshStandardMaterial color="#4b4e52" flatShading />
+          <meshStandardMaterial color="#4b4e52" flatShading transparent opacity={alpha} />
         </mesh>
         {Array.from({ length: 4 }).map((_, index) => (
           <mesh
@@ -531,7 +540,7 @@ function EnvironmentProps() {
             position={[3.48, 1.9 + index * 0.23, -2.2]}
           >
             <sphereGeometry args={[0.13 + index * 0.015, 10, 10]} />
-            <meshStandardMaterial color="#d2d6dc" transparent opacity={0.35} />
+            <meshStandardMaterial color="#d2d6dc" transparent opacity={0.35 * alpha} />
           </mesh>
         ))}
       </group>
@@ -545,7 +554,7 @@ function EnvironmentProps() {
             rotation={[Math.PI / 2, index % 2 === 0 ? 0.35 : -0.45, 0]}
           >
             <cylinderGeometry args={[0.1, 0.1, 0.95, 10]} />
-            <meshStandardMaterial color="#8a6446" flatShading />
+            <meshStandardMaterial color="#8a6446" flatShading transparent opacity={alpha} />
           </mesh>
         ))}
       </group>
@@ -566,7 +575,7 @@ function getLineupTarget(index: number, total: number): { x: number; z: number }
   const rowWidth = (itemsInRow - 1) * xSpacing;
 
   return {
-    x: col * xSpacing - rowWidth / 2,
+    x: col * xSpacing - rowWidth / 2 + 3.8,
     z: -2.2 + row * zSpacing,
   };
 }
@@ -607,15 +616,33 @@ export default function LandingScene3D({
     [characters],
   );
 
-  if (!isWebGLAvailable) {
-    return null;
-  }
-
   const canvasScalePercent = tuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const isPeopleMode = mode === 'people';
   const backgroundColor = isPeopleMode ? '#05070d' : '#112126';
   const fogColor = isPeopleMode ? '#05070d' : '#112126';
+  const [decorAlpha, setDecorAlpha] = useState(1);
+
+  useEffect(() => {
+    let raf = 0;
+
+    const tick = () => {
+      setDecorAlpha((current) => {
+        const targetAlpha = isPeopleMode ? 0 : 1;
+        const next = current + (targetAlpha - current) * 0.045;
+        return Math.abs(next - targetAlpha) < 0.01 ? targetAlpha : next;
+      });
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isPeopleMode]);
+
+
+  if (!isWebGLAvailable) {
+    return null;
+  }
 
   return (
     <div
@@ -638,17 +665,18 @@ export default function LandingScene3D({
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[tuning.sceneRadius, 72]} />
-          <meshStandardMaterial color={isPeopleMode ? "#11161f" : "#2e4a42"} flatShading />
+          <meshStandardMaterial color={isPeopleMode ? '#11161f' : '#2e4a42'} flatShading />
         </mesh>
 
-        {!isPeopleMode && <EnvironmentProps />}
+        {decorAlpha > 0.01 && <EnvironmentProps alpha={decorAlpha} />}
 
-        {!isPeopleMode && <DraggableFire
+        {decorAlpha > 0.01 && <DraggableFire
           override={tuning.fireOverride}
           selected={selectedModelId === 'fire'}
           editMode={editMode}
           onSelect={(id) => onSelectModel?.(id)}
           onOverrideChange={(next) => onFireOverrideChange?.(next)}
+          alpha={decorAlpha}
         />}
 
         {orderedCharacters.map((character, index) => {
@@ -675,19 +703,19 @@ export default function LandingScene3D({
                 />
               )}
               <DraggableCharacter
-              id={character.id}
-              config={character.config}
-              movementBehavior={movementBehavior}
-              editMode={editMode}
-              selected={selectedModelId === character.id}
-              onSelect={(id) => onSelectModel?.(id)}
-              onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
-              override={override}
-              globalCharacterScale={tuning.characterScale}
-              lineupTarget={lineupTarget}
-              isPeopleMode={isPeopleMode}
-              onActivate={onCharacterActivate}
-            />
+                id={character.id}
+                config={character.config}
+                movementBehavior={movementBehavior}
+                editMode={editMode}
+                selected={selectedModelId === character.id}
+                onSelect={(id) => onSelectModel?.(id)}
+                onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
+                override={override}
+                globalCharacterScale={tuning.characterScale}
+                lineupTarget={lineupTarget}
+                isPeopleMode={isPeopleMode}
+                onActivate={onCharacterActivate}
+              />
             </group>
           );
         })}
