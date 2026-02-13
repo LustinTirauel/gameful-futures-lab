@@ -328,7 +328,7 @@ export default function Home() {
         <CharacterLayer
           mode={mode}
           reactionId={reactionId}
-          movementBehavior={modeMovementBehavior[mode]}
+          isRunning={modeMovementBehavior[mode] === 'run'}
           onReact={handleCharacterClick}
           onSelectPerson={handleCharacterSelect}
         />

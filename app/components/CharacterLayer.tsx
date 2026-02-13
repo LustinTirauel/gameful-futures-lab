@@ -7,7 +7,7 @@ type Mode = 'home' | 'people' | 'projects';
 type CharacterLayerProps = {
   mode: Mode;
   reactionId: string | null;
-  movementBehavior: CharacterBehavior;
+  isRunning: boolean;
   onReact: (personId: string) => void;
   onSelectPerson: (personId: string) => void;
 };
@@ -68,7 +68,7 @@ function getBehaviorPose(
 export default function CharacterLayer({
   mode,
   reactionId,
-  movementBehavior,
+  isRunning,
   onReact,
   onSelectPerson,
 }: CharacterLayerProps) {
@@ -87,7 +87,7 @@ export default function CharacterLayer({
   return (
     <section className="characters">
       {activePeople.map((person, index) => {
-        const running = movementBehavior === 'run';
+        const running = isRunning;
         return (
           <motion.article
             key={`${mode}-${person.id}`}
