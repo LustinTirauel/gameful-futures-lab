@@ -622,18 +622,24 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
 
 function getLineupTarget(index: number, total: number): { x: number; z: number } {
   const columns = 3;
-  const xSpacing = 2.1;
-  const zSpacing = 1.8;
+  const xSpacing = 2.2;
+  const rowDepthSpacing = 2.2;
+  const baseZ = -4.9;
+  const leftShift = -1.4;
+
   const row = Math.floor(index / columns);
   const rowStart = row * columns;
   const remaining = Math.max(0, total - rowStart);
   const itemsInRow = Math.min(columns, remaining);
   const col = index - rowStart;
-  const rowWidth = (itemsInRow - 1) * xSpacing;
+  const rowCenter = (itemsInRow - 1) / 2;
+
+  const centeredX = (col - rowCenter) * xSpacing;
+  const depthSkew = (col - rowCenter) * 0.65;
 
   return {
-    x: col * xSpacing - rowWidth / 2,
-    z: -1.4 + row * zSpacing,
+    x: centeredX + leftShift,
+    z: baseZ + row * rowDepthSpacing + depthSkew,
   };
 }
 
@@ -692,7 +698,7 @@ export default function LandingScene3D({
   const backgroundColor = homeBg.clone().lerp(peopleBg, peopleRunProgress).getStyle();
   const fogColor = backgroundColor;
   const groundColor = homeGround.clone().lerp(peopleGround, peopleRunProgress).getStyle();
-  const southFacingY = Math.atan2(tuning.cameraX, tuning.cameraZ);
+  const southFacingY = 1;
   const decorAlpha = 1 - peopleRunProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
 
@@ -776,7 +782,7 @@ export default function LandingScene3D({
               {isPeopleMode && (
                 <NamePlate3D
                   name={character.name}
-                  position={[lineupTarget.x, -0.44, lineupTarget.z + 0.8]}
+                  position={[lineupTarget.x + 0.5, -0.44, lineupTarget.z + 0.45]}
                   opacity={arrivedIds[character.id] ? 1 : 0}
                 />
               )}
