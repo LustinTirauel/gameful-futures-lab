@@ -275,41 +275,50 @@ a { color: inherit; text-decoration: none; }
   color: #b8e2bf;
 }
 
-.people-runway {
-  position: absolute;
-  left: 4vw;
-  right: 4vw;
-  bottom: 8%;
-  z-index: 18;
-  pointer-events: none;
+
+
+.nameplate-3d-label {
+  font-size: 10px;
+  color: #111;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
-.people-runway-track {
-  height: 92px;
-  border-radius: 14px;
-  border: 1px solid rgba(155, 230, 164, 0.35);
-  background: linear-gradient(90deg, rgba(8, 15, 18, 0.88), rgba(18, 46, 40, 0.88));
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-}
-
-.people-runway-plates {
+.people-modal-backdrop {
   position: absolute;
   inset: 0;
+  z-index: 36;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  pointer-events: auto;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
 }
 
-.runway-nameplate {
-  border: 1px solid #8ebf95;
-  border-radius: 999px;
-  background: rgba(10, 24, 18, 0.8);
-  color: #e5f7e7;
-  padding: 8px 10px;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  cursor: pointer;
+.people-modal {
+  width: min(560px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid #47604d;
+  background: rgba(8, 12, 10, 0.95);
+  color: #e8f2ea;
+  padding: 18px;
+  position: relative;
+}
+
+.people-modal-close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+}
+
+.people-modal-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
 }

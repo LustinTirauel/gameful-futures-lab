@@ -7,15 +7,14 @@ import LandingScene3D, {
   type ModelOverride,
   type SceneTuning,
 } from './components/LandingScene3D';
-import PeoplePanel from './components/PeoplePanel';
-import PeopleRunway from './components/PeopleRunway';
+import PeopleModal from './components/PeopleModal';
 import ProjectsLayer from './components/ProjectsLayer';
 import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -76,6 +75,10 @@ export default function Home() {
           ...current.fireOverride,
           ...(parsed.fireOverride ?? {}),
         },
+        environmentOverrides: {
+          ...current.environmentOverrides,
+          ...(parsed.environmentOverrides ?? {}),
+        },
       }));
     } catch {
       // Keep defaults when saved JSON is invalid.
@@ -88,7 +91,7 @@ export default function Home() {
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const sceneCharacters = useMemo(
-    () => people.map((person) => ({ id: person.id, config: characterConfigs[person.id] })),
+    () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
     [],
   );
 
@@ -96,6 +99,12 @@ export default function Home() {
     selectedModelId && selectedModelId !== 'fire'
       ? sceneCharacters.find((character) => character.id === selectedModelId)
       : null;
+
+
+  const selectedPersonData = selectedPerson ? people.find((person) => person.id === selectedPerson) ?? null : null;
+  const selectedPersonProjects = selectedPerson
+    ? projects.filter((project) => project.memberIds.includes(selectedPerson))
+    : [];
 
   function handleModeChange(nextMode: Mode) {
     setMode(nextMode);
@@ -221,6 +230,7 @@ export default function Home() {
           onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
           onCharacterOverrideChange={updateCharacterOverride}
           onFireOverrideChange={updateFireOverride}
+          onCharacterActivate={handleCharacterSelect}
         />
       )}
 
@@ -304,11 +314,13 @@ export default function Home() {
         />
       )}
 
-      {mode === 'people' && !scene3DFailed && (
-        <PeopleRunway people={sortedPeople} onSelectPerson={handleCharacterSelect} />
+      {mode === 'people' && selectedPersonData && (
+        <PeopleModal
+          person={selectedPersonData}
+          projects={selectedPersonProjects}
+          onClose={() => setSelectedPerson(null)}
+        />
       )}
-
-      {mode === 'people' && <PeoplePanel people={sortedPeople} selectedPerson={selectedPerson} />}
 
       {mode === 'projects' && (
         <ProjectsLayer
