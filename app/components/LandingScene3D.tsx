@@ -37,9 +37,25 @@ export type SceneTuning = {
   runDurationSeconds: number;
   characterOverrides: Record<string, ModelOverride>;
   peopleCharacterOverrides: Record<string, ModelOverride>;
+  peopleViewTuning: PeopleViewTuning;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
 };
+
+export type PeopleViewTuning = Pick<
+  SceneTuning,
+  | 'cameraX'
+  | 'cameraY'
+  | 'cameraZ'
+  | 'fov'
+  | 'fogNear'
+  | 'fogFar'
+  | 'characterScale'
+  | 'sceneOffsetX'
+  | 'sceneOffsetY'
+  | 'sceneCanvasScale'
+  | 'sceneRadius'
+>;
 
 export const defaultSceneTuning: SceneTuning = {
   cameraX: 7.5,
@@ -103,6 +119,19 @@ export const defaultSceneTuning: SceneTuning = {
     },
   },
   peopleCharacterOverrides: {},
+  peopleViewTuning: {
+    cameraX: 6.1,
+    cameraY: 7.4,
+    cameraZ: 5.8,
+    fov: 39,
+    fogNear: 12,
+    fogFar: 31,
+    characterScale: 0.78,
+    sceneOffsetX: 0,
+    sceneOffsetY: 9.5,
+    sceneCanvasScale: 1.4,
+    sceneRadius: 40,
+  },
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -124,19 +153,6 @@ export const defaultSceneTuning: SceneTuning = {
   },
 };
 
-const peopleModeTargetTuning = {
-  cameraX: 6.1,
-  cameraY: 7.4,
-  cameraZ: 5.8,
-  fov: 39,
-  fogNear: 12,
-  fogFar: 31,
-  characterScale: 0.78,
-  sceneOffsetX: 0,
-  sceneOffsetY: 9.5,
-  sceneCanvasScale: 1.4,
-  sceneRadius: 40,
-};
 
 function lerpNumber(from: number, to: number, progress: number): number {
   return from + (to - from) * progress;
@@ -724,7 +740,7 @@ export default function LandingScene3D({
   const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
   const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
-  const peopleTargetTuning = isPeopleMode && editMode ? tuning : peopleModeTargetTuning;
+  const peopleTargetTuning = tuning.peopleViewTuning;
 
   const effectiveTuning = {
     cameraX: lerpNumber(tuning.cameraX, peopleTargetTuning.cameraX, peopleTransitionProgress),

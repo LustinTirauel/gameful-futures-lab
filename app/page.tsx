@@ -5,6 +5,7 @@ import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
   type ModelOverride,
+  type PeopleViewTuning,
   type SceneTuning,
 } from './components/LandingScene3D';
 import PeopleModal from './components/PeopleModal';
@@ -14,7 +15,7 @@ import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'fireOverride' | 'environmentOverrides'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -38,6 +39,21 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
   { key: 'preRunTurnSeconds', label: 'People pre-run turn (s)', min: 0, max: 4, step: 0.05 },
   { key: 'runDurationSeconds', label: 'People run duration (s)', min: 0.5, max: 10, step: 0.1 },
+];
+
+
+const peopleViewKeys: Array<keyof PeopleViewTuning> = [
+  'cameraX',
+  'cameraY',
+  'cameraZ',
+  'fov',
+  'fogNear',
+  'fogFar',
+  'characterScale',
+  'sceneOffsetX',
+  'sceneOffsetY',
+  'sceneCanvasScale',
+  'sceneRadius',
 ];
 
 const modelFields: Array<{ key: keyof ModelOverride; min: number; max: number; step: number }> = [
@@ -76,6 +92,10 @@ export default function Home() {
         peopleCharacterOverrides: {
           ...current.peopleCharacterOverrides,
           ...(parsed.peopleCharacterOverrides ?? {}),
+        },
+        peopleViewTuning: {
+          ...current.peopleViewTuning,
+          ...(parsed.peopleViewTuning ?? {}),
         },
         fireOverride: {
           ...current.fireOverride,
@@ -136,7 +156,20 @@ export default function Home() {
   }
 
   function handleTuningChange(key: NumericSceneTuningKey, value: number) {
-    setSceneTuning((current) => ({ ...current, [key]: value }));
+    setSceneTuning((current) => {
+      if (mode === 'people' && peopleViewKeys.includes(key as keyof PeopleViewTuning)) {
+        const peopleKey = key as keyof PeopleViewTuning;
+        return {
+          ...current,
+          peopleViewTuning: {
+            ...current.peopleViewTuning,
+            [peopleKey]: value,
+          },
+        };
+      }
+
+      return { ...current, [key]: value };
+    });
   }
 
   function handleTuningReset() {
@@ -192,6 +225,14 @@ export default function Home() {
       peopleCharacterOverrides: buildCompleteCharacterOverrides('people'),
     };
     await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
+  }
+
+
+  function getTuningFieldValue(key: NumericSceneTuningKey): number {
+    if (mode === 'people' && peopleViewKeys.includes(key as keyof PeopleViewTuning)) {
+      return sceneTuning.peopleViewTuning[key as keyof PeopleViewTuning];
+    }
+    return sceneTuning[key];
   }
 
   function getSelectedModelOverride(): ModelOverride | null {
@@ -314,10 +355,10 @@ export default function Home() {
                       min={field.min}
                       max={field.max}
                       step={field.step}
-                      value={sceneTuning[field.key]}
+                      value={getTuningFieldValue(field.key)}
                       onChange={(event) => handleTuningChange(field.key, Number(event.target.value))}
                     />
-                    <strong>{sceneTuning[field.key].toFixed(2)}</strong>
+                    <strong>{getTuningFieldValue(field.key).toFixed(2)}</strong>
                   </label>
                 ))}
               </div>
