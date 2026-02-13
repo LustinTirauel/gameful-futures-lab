@@ -138,8 +138,19 @@ export default function Home() {
     });
   }
 
+
+  function buildCompleteCharacterOverrides(): Record<string, ModelOverride> {
+    return Object.fromEntries(
+      sceneCharacters.map((character) => [character.id, getCharacterOverride(character.id)]),
+    );
+  }
+
   async function handleTuningCopy() {
-    await navigator.clipboard.writeText(JSON.stringify(sceneTuning, null, 2));
+    const exportPayload: SceneTuning = {
+      ...sceneTuning,
+      characterOverrides: buildCompleteCharacterOverrides(),
+    };
+    await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
   }
 
   function getCharacterOverride(characterId: string): ModelOverride {
