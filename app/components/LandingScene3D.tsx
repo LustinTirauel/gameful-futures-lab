@@ -724,22 +724,24 @@ export default function LandingScene3D({
   const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
   const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
+  const peopleTargetTuning = isPeopleMode && editMode ? tuning : peopleModeTargetTuning;
+
   const effectiveTuning = {
-    cameraX: lerpNumber(tuning.cameraX, peopleModeTargetTuning.cameraX, peopleTransitionProgress),
-    cameraY: lerpNumber(tuning.cameraY, peopleModeTargetTuning.cameraY, peopleTransitionProgress),
-    cameraZ: lerpNumber(tuning.cameraZ, peopleModeTargetTuning.cameraZ, peopleTransitionProgress),
-    fov: lerpNumber(tuning.fov, peopleModeTargetTuning.fov, peopleTransitionProgress),
-    fogNear: lerpNumber(tuning.fogNear, peopleModeTargetTuning.fogNear, peopleTransitionProgress),
-    fogFar: lerpNumber(tuning.fogFar, peopleModeTargetTuning.fogFar, peopleTransitionProgress),
-    characterScale: lerpNumber(tuning.characterScale, peopleModeTargetTuning.characterScale, peopleTransitionProgress),
-    sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleModeTargetTuning.sceneOffsetX, peopleTransitionProgress),
-    sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleModeTargetTuning.sceneOffsetY, peopleTransitionProgress),
+    cameraX: lerpNumber(tuning.cameraX, peopleTargetTuning.cameraX, peopleTransitionProgress),
+    cameraY: lerpNumber(tuning.cameraY, peopleTargetTuning.cameraY, peopleTransitionProgress),
+    cameraZ: lerpNumber(tuning.cameraZ, peopleTargetTuning.cameraZ, peopleTransitionProgress),
+    fov: lerpNumber(tuning.fov, peopleTargetTuning.fov, peopleTransitionProgress),
+    fogNear: lerpNumber(tuning.fogNear, peopleTargetTuning.fogNear, peopleTransitionProgress),
+    fogFar: lerpNumber(tuning.fogFar, peopleTargetTuning.fogFar, peopleTransitionProgress),
+    characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
+    sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleTargetTuning.sceneOffsetX, peopleTransitionProgress),
+    sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress),
     sceneCanvasScale: lerpNumber(
       tuning.sceneCanvasScale,
-      peopleModeTargetTuning.sceneCanvasScale,
+      peopleTargetTuning.sceneCanvasScale,
       peopleTransitionProgress,
     ),
-    sceneRadius: lerpNumber(tuning.sceneRadius, peopleModeTargetTuning.sceneRadius, peopleTransitionProgress),
+    sceneRadius: lerpNumber(tuning.sceneRadius, peopleTargetTuning.sceneRadius, peopleTransitionProgress),
   };
   const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
@@ -851,8 +853,8 @@ export default function LandingScene3D({
           const lineupSlot = getLineupTarget(index, orderedCharacters.length);
           const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
           const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = slotX * 0.24;
-          const ndcY = 0.3 - lineupSlot.row * 0.32;
+          const ndcX = slotX * 0.2;
+          const ndcY = 0.42 - lineupSlot.row * 0.28;
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
@@ -866,9 +868,9 @@ export default function LandingScene3D({
             y: homeOverride.y,
             z: projectedLineupTarget.z,
             scale: homeOverride.scale,
-            rotX: homeOverride.rotX,
-            rotY: homeOverride.rotY,
-            rotZ: homeOverride.rotZ,
+            rotX: 0,
+            rotY: southFacingY,
+            rotZ: 0,
           };
           const lineupTarget = isPeopleMode
             ? { x: peopleOverride.x, z: peopleOverride.z }
