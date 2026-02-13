@@ -1,3 +1,8 @@
+:root {
+  --char-scale-mobile: 0.74;
+  --char-scale-desktop: 0.88;
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #050505; color: #d0d0d0; }
 body { min-height: 100vh; }
@@ -16,6 +21,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   inset: 0;
   z-index: 2;
+  transform: translate(-8%, 6%);
 }
 
 .scene-layer canvas {
@@ -66,29 +72,31 @@ a { color: inherit; text-decoration: none; }
 
 .characters {
   position: absolute;
-  bottom: 12%;
-  left: 8%;
-  right: 8%;
-  height: 230px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  inset: 0;
   z-index: 12;
 }
 
 .char {
-  width: 88px;
-  height: 140px;
-  border-radius: 46px;
+  width: 74px;
+  height: 118px;
+  border-radius: 40px;
   border: 2px solid #c7d8ca;
   background: linear-gradient(#6f9576, #3f5747);
-  position: relative;
+  position: absolute;
+  transform: translate(-50%, -100%) scale(var(--char-scale-mobile));
+  transform-origin: 50% 100%;
   cursor: pointer;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 12px;
-  font-size: 11px;
+  padding-top: 10px;
+  font-size: 10px;
+}
+
+@media (min-width: 900px) {
+  .char {
+    transform: translate(-50%, -100%) scale(var(--char-scale-desktop));
+  }
 }
 
 .nameplate {
@@ -148,4 +156,78 @@ a { color: inherit; text-decoration: none; }
   border-radius: 10px;
   padding: 12px;
   max-width: 420px;
+}
+
+
+.tuning-toggle {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 31;
+  border: 1px solid #607b64;
+  background: rgba(0, 0, 0, 0.72);
+  color: #bdeac0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.tuning-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 64px;
+  width: min(360px, 88vw);
+  max-height: 62vh;
+  overflow: auto;
+  z-index: 31;
+  border: 1px solid #556b58;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 12px;
+}
+
+.tuning-panel h3 {
+  margin: 0;
+}
+
+.tuning-panel p {
+  margin: 8px 0 10px;
+  color: #c6d1c8;
+  font-size: 12px;
+}
+
+.tuning-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.tuning-fields label {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.tuning-fields span {
+  font-size: 12px;
+  color: #d8e7da;
+}
+
+.tuning-fields strong {
+  font-size: 12px;
+  color: #9de6a4;
+}
+
+.tuning-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.tuning-actions button {
+  border: 1px solid #607b64;
+  background: rgba(20, 20, 20, 0.85);
+  color: #e4efe5;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
 }

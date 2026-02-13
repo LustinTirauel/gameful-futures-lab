@@ -1,6 +1,6 @@
 'use client';
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
@@ -8,20 +8,66 @@ import PrimitiveCharacter from './PrimitiveCharacter';
 
 type MovementBehavior = 'idle' | 'run';
 
+export type SceneTuning = {
+  cameraX: number;
+  cameraY: number;
+  cameraZ: number;
+  fov: number;
+  fogNear: number;
+  fogFar: number;
+  characterScale: number;
+  sceneOffsetX: number;
+  sceneOffsetY: number;
+  campfireX: number;
+  campfireY: number;
+  campfireZ: number;
+};
+
+export const defaultSceneTuning: SceneTuning = {
+  cameraX: 6.3,
+  cameraY: 5.2,
+  cameraZ: 6.3,
+  fov: 29,
+  fogNear: 8,
+  fogFar: 20,
+  characterScale: 0.9,
+  sceneOffsetX: -8,
+  sceneOffsetY: 6,
+  campfireX: -0.9,
+  campfireY: -0.36,
+  campfireZ: -2.8,
+};
+
 type LandingScene3DProps = {
   characters: Array<{ id: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
   onRuntimeError?: () => void;
+  tuning?: SceneTuning;
 };
+
+function CameraController({ tuning }: { tuning: SceneTuning }) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.position.set(tuning.cameraX, tuning.cameraY, tuning.cameraZ);
+    camera.fov = tuning.fov;
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }, [camera, tuning.cameraX, tuning.cameraY, tuning.cameraZ, tuning.fov]);
+
+  return null;
+}
 
 function CharacterGroup({
   id,
   config,
   movementBehavior,
+  characterScale,
 }: {
   id: string;
   config: CharacterConfig;
   movementBehavior: MovementBehavior;
+  characterScale: number;
 }) {
   const groupRef = useRef<Group>(null);
 
@@ -46,7 +92,7 @@ function CharacterGroup({
   });
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} scale={[characterScale, characterScale, characterScale]}>
       <PrimitiveCharacter
         pose={config.pose}
         rotation={config.rotation}
@@ -60,7 +106,12 @@ function CharacterGroup({
   );
 }
 
-export default function LandingScene3D({ characters, movementBehavior = 'idle', onRuntimeError }: LandingScene3DProps) {
+export default function LandingScene3D({
+  characters,
+  movementBehavior = 'idle',
+  onRuntimeError,
+  tuning = defaultSceneTuning,
+}: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -89,10 +140,15 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
   }
 
   return (
-    <div className="scene-layer" aria-hidden="true">
-      <Canvas camera={{ position: [0, 0.8, 4.6], fov: 44 }} shadows>
+    <div
+      className="scene-layer"
+      style={{ transform: `translate(${tuning.sceneOffsetX}%, ${tuning.sceneOffsetY}%)` }}
+      aria-hidden="true"
+    >
+      <Canvas camera={{ position: [tuning.cameraX, tuning.cameraY, tuning.cameraZ], fov: tuning.fov }} shadows>
+        <CameraController tuning={tuning} />
         <color attach="background" args={['#112126']} />
-        <fog attach="fog" args={['#112126', 4, 10]} />
+        <fog attach="fog" args={['#112126', tuning.fogNear, tuning.fogFar]} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
 
@@ -101,7 +157,7 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
           <meshStandardMaterial color="#2e4a42" flatShading />
         </mesh>
 
-        <group position={[0.7, -0.28, 0.6]}>
+        <group position={[tuning.campfireX, tuning.campfireY, tuning.campfireZ]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.18, 0.22, 0.12, 6]} />
             <meshStandardMaterial color="#6b4b37" flatShading />
@@ -119,6 +175,7 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
             id={character.id}
             config={character.config}
             movementBehavior={movementBehavior}
+            characterScale={tuning.characterScale}
           />
         ))}
       </Canvas>
