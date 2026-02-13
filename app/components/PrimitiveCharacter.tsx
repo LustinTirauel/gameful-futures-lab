@@ -26,6 +26,7 @@ type PrimitiveCharacterProps = GroupProps & {
   accessories?: Accessory[];
   colors?: Partial<CharacterColors>;
   pose?: CharacterPose;
+  locomotion?: 'idle' | 'run';
 };
 
 const defaultColors: CharacterColors = {
@@ -76,6 +77,7 @@ export default function PrimitiveCharacter({
   accessories = [],
   colors,
   pose = 'standing',
+  locomotion = 'idle',
   ...groupProps
 }: PrimitiveCharacterProps) {
   const palette = { ...defaultColors, ...colors };
@@ -89,6 +91,7 @@ export default function PrimitiveCharacter({
   const fishingRodRef = useRef<Group>(null);
   const speechBubbleRef = useRef<Group>(null);
   const pillowRef = useRef<Group>(null);
+  const legRefs = useRef<Array<Group | null>>([]);
 
   useFrame(({ clock }, delta) => {
     if (!rootRef.current) return;
@@ -130,6 +133,17 @@ export default function PrimitiveCharacter({
     if (pillowRef.current && pose === 'sleeping') {
       pillowRef.current.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.06);
     }
+
+    legRefs.current.forEach((leg, index) => {
+      if (!leg) return;
+
+      if (locomotion === 'run') {
+        const phase = index === 0 ? 0 : Math.PI;
+        leg.rotation.x = Math.sin(elapsed * 10 + phase) * 0.5;
+      } else {
+        leg.rotation.x *= 0.82;
+      }
+    });
   });
 
   const triggerReaction = () => {
@@ -289,8 +303,10 @@ export default function PrimitiveCharacter({
           </mesh>
         )}
 
-        {[ -config.legSpread / 2, config.legSpread / 2 ].map((x, index) => (
-          <group key={x} position={[x, -0.18, 0.02]}>
+        {[-config.legSpread / 2, config.legSpread / 2].map((x, index) => (
+          <group key={x} ref={(node) => {
+              legRefs.current[index] = node;
+            }} position={[x, -0.18, 0.02]}>
             {legShape === 'box' ? (
               <mesh castShadow>
                 <boxGeometry args={[0.12, 0.32, 0.12]} />

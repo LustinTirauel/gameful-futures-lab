@@ -274,3 +274,42 @@ a { color: inherit; text-decoration: none; }
   margin: 0 0 8px;
   color: #b8e2bf;
 }
+
+.people-runway {
+  position: absolute;
+  left: 4vw;
+  right: 4vw;
+  bottom: 8%;
+  z-index: 18;
+  pointer-events: none;
+}
+
+.people-runway-track {
+  height: 92px;
+  border-radius: 14px;
+  border: 1px solid rgba(155, 230, 164, 0.35);
+  background: linear-gradient(90deg, rgba(8, 15, 18, 0.88), rgba(18, 46, 40, 0.88));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.people-runway-plates {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  pointer-events: auto;
+}
+
+.runway-nameplate {
+  border: 1px solid #8ebf95;
+  border-radius: 999px;
+  background: rgba(10, 24, 18, 0.8);
+  color: #e5f7e7;
+  padding: 8px 10px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}

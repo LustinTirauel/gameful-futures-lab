@@ -8,6 +8,7 @@ import LandingScene3D, {
   type SceneTuning,
 } from './components/LandingScene3D';
 import PeoplePanel from './components/PeoplePanel';
+import PeopleRunway from './components/PeopleRunway';
 import ProjectsLayer from './components/ProjectsLayer';
 import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
@@ -208,10 +209,11 @@ export default function Home() {
 
   return (
     <main className="main">
-      {mode === 'home' && !scene3DFailed && (
+      {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
           movementBehavior={modeMovementBehavior[mode]}
+          mode={mode}
           onRuntimeError={handleSceneRuntimeError}
           tuning={sceneTuning}
           editMode={editMode}
@@ -292,7 +294,7 @@ export default function Home() {
         </>
       )}
 
-      {(mode !== 'home' || scene3DFailed) && (
+      {(mode === 'projects' || scene3DFailed) && (
         <CharacterLayer
           mode={mode}
           reactionId={reactionId}
@@ -300,6 +302,10 @@ export default function Home() {
           onReact={handleCharacterClick}
           onSelectPerson={handleCharacterSelect}
         />
+      )}
+
+      {mode === 'people' && !scene3DFailed && (
+        <PeopleRunway people={sortedPeople} onSelectPerson={handleCharacterSelect} />
       )}
 
       {mode === 'people' && <PeoplePanel people={sortedPeople} selectedPerson={selectedPerson} />}

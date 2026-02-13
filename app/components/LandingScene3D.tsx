@@ -109,6 +109,7 @@ export const defaultSceneTuning: SceneTuning = {
 type LandingScene3DProps = {
   characters: Array<{ id: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
+  mode?: 'home' | 'people' | 'projects';
   onRuntimeError?: () => void;
   tuning?: SceneTuning;
   editMode?: boolean;
@@ -143,6 +144,9 @@ function DraggableCharacter({
   onSelect,
   onOverrideChange,
   globalCharacterScale,
+  lineupIndex,
+  lineupTotal,
+  isPeopleMode,
 }: {
   id: string;
   config: CharacterConfig;
@@ -153,6 +157,9 @@ function DraggableCharacter({
   onSelect: (modelId: string) => void;
   onOverrideChange: (characterId: string, next: ModelOverride) => void;
   globalCharacterScale: number;
+  lineupIndex: number;
+  lineupTotal: number;
+  isPeopleMode: boolean;
 }) {
   const groupRef = useRef<Group>(null);
   const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
@@ -168,6 +175,14 @@ function DraggableCharacter({
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
+    const lineupSpacing = 0.95;
+    const lineupCenter = (lineupTotal - 1) / 2;
+    const lineupZ = (lineupIndex - lineupCenter) * lineupSpacing - 1.2;
+    const desiredX = override.x;
+    const desiredZ = isPeopleMode && !editMode ? lineupZ : override.z;
+
+    targetPosition.current = { x: desiredX, z: desiredZ };
+
     const smooth = isDragging.current ? 0.42 : 0.22;
     groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
     groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
@@ -177,6 +192,13 @@ function DraggableCharacter({
         ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045
         : 0;
     groupRef.current.position.y = override.y + bob;
+
+    const desiredRotY = isPeopleMode && !editMode ? (desiredZ > override.z ? 0 : Math.PI) : override.rotY;
+    const desiredRotX = isPeopleMode && !editMode ? 0 : override.rotX;
+    const desiredRotZ = isPeopleMode && !editMode ? 0 : override.rotZ;
+    groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.14;
+    groupRef.current.rotation.x += (desiredRotX - groupRef.current.rotation.x) * 0.14;
+    groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.14;
   });
 
   return (
@@ -239,7 +261,8 @@ function DraggableCharacter({
       }}
     >
       <PrimitiveCharacter
-        pose={config.pose}
+        pose={isPeopleMode ? 'standing' : config.pose}
+        locomotion={movementBehavior}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
@@ -431,7 +454,9 @@ function EnvironmentProps() {
             <cylinderGeometry args={[0.1, 0.14, 1.1, 8]} />
             <meshStandardMaterial color="#6d4a35" flatShading />
           </mesh>
-          <group ref={(node) => (treeTopRefs.current[index] = node)} position={[0, 1.2, 0]}>
+          <group ref={(node) => {
+              treeTopRefs.current[index] = node;
+            }} position={[0, 1.2, 0]}>
             <mesh castShadow>
               <coneGeometry args={[0.62, 1.1, 10]} />
               <meshStandardMaterial color="#4f8d53" flatShading />
@@ -460,7 +485,9 @@ function EnvironmentProps() {
         {Array.from({ length: 4 }).map((_, index) => (
           <mesh
             key={`smoke-${index}`}
-            ref={(node) => (smokeRefs.current[index] = node)}
+            ref={(node) => {
+              smokeRefs.current[index] = node;
+            }}
             position={[3.48, 1.9 + index * 0.23, -2.2]}
           >
             <sphereGeometry args={[0.13 + index * 0.015, 10, 10]} />
@@ -489,6 +516,7 @@ function EnvironmentProps() {
 export default function LandingScene3D({
   characters,
   movementBehavior = 'idle',
+  mode = 'home',
   onRuntimeError,
   tuning = defaultSceneTuning,
   editMode = false,
@@ -526,6 +554,7 @@ export default function LandingScene3D({
 
   const canvasScalePercent = tuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
+  const isPeopleMode = mode === 'people';
 
   return (
     <div
@@ -561,7 +590,7 @@ export default function LandingScene3D({
           onOverrideChange={(next) => onFireOverrideChange?.(next)}
         />
 
-        {orderedCharacters.map((character) => {
+        {orderedCharacters.map((character, index) => {
           const [baseX, baseY, baseZ] = character.config.position;
           const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
           const override = tuning.characterOverrides[character.id] ?? {
@@ -586,6 +615,9 @@ export default function LandingScene3D({
               onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
               override={override}
               globalCharacterScale={tuning.characterScale}
+              lineupIndex={index}
+              lineupTotal={orderedCharacters.length}
+              isPeopleMode={isPeopleMode}
             />
           );
         })}
