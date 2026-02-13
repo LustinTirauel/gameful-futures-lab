@@ -34,6 +34,7 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'characterScale', label: 'Character Scale', min: 0.4, max: 1.4, step: 0.01 },
   { key: 'sceneOffsetX', label: 'Scene Offset X (%)', min: -40, max: 20, step: 0.5 },
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
+  { key: 'sceneCanvasScale', label: 'Canvas Scale', min: 1, max: 2.6, step: 0.05 },
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
 ];
 

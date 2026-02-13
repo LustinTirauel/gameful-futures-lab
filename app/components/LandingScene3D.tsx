@@ -3,6 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
+import { Plane, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
@@ -28,6 +29,7 @@ export type SceneTuning = {
   characterScale: number;
   sceneOffsetX: number;
   sceneOffsetY: number;
+  sceneCanvasScale: number;
   sceneRadius: number;
   characterOverrides: Record<string, ModelOverride>;
   fireOverride: ModelOverride;
@@ -43,6 +45,7 @@ export const defaultSceneTuning: SceneTuning = {
   characterScale: 0.78,
   sceneOffsetX: -8.5,
   sceneOffsetY: 3,
+  sceneCanvasScale: 1.4,
   sceneRadius: 40,
   characterOverrides: {},
   fireOverride: {
@@ -105,6 +108,8 @@ function DraggableCharacter({
   globalCharacterScale: number;
 }) {
   const groupRef = useRef<Group>(null);
+  const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
+  const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
   const dragOffset = useRef({ x: 0, z: 0 });
   const isDragging = useRef(false);
@@ -116,23 +121,21 @@ function DraggableCharacter({
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const smooth = isDragging.current ? 0.35 : 0.18;
-    const currentX = groupRef.current.position.x;
-    const currentZ = groupRef.current.position.z;
-    groupRef.current.position.x = currentX + (targetPosition.current.x - currentX) * smooth;
-    groupRef.current.position.z = currentZ + (targetPosition.current.z - currentZ) * smooth;
+    const smooth = isDragging.current ? 0.42 : 0.22;
+    groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
+    groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
 
     const bob =
       movementBehavior === 'run' && !editMode
         ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045
         : 0;
-
     groupRef.current.position.y = override.y + bob;
   });
 
   return (
     <group
       ref={groupRef}
+      position={[override.x, override.y, override.z]}
       rotation={[override.rotX, override.rotY, override.rotZ]}
       scale={[
         override.scale * globalCharacterScale,
@@ -144,19 +147,26 @@ function DraggableCharacter({
         event.stopPropagation();
         onSelect(id);
         isDragging.current = true;
-        (event.target as { setPointerCapture?: (pointerId: number) => void } | null)?.setPointerCapture?.(event.pointerId);
+        (event.target as { setPointerCapture?: (pointerId: number) => void } | null)?.setPointerCapture?.(
+          event.pointerId,
+        );
+        event.ray.intersectPlane(dragPlane, dragPoint);
         dragOffset.current = {
-          x: targetPosition.current.x - event.point.x,
-          z: targetPosition.current.z - event.point.z,
+          x: override.x - dragPoint.x,
+          z: override.z - dragPoint.z,
         };
       }}
       onPointerMove={(event) => {
         if (!editMode || !isDragging.current) return;
         event.stopPropagation();
+        event.ray.intersectPlane(dragPlane, dragPoint);
+        const nextX = dragPoint.x + dragOffset.current.x;
+        const nextZ = dragPoint.z + dragOffset.current.z;
+
         const next = {
           ...override,
-          x: event.point.x + dragOffset.current.x,
-          z: event.point.z + dragOffset.current.z,
+          x: Math.max(-80, Math.min(80, nextX)),
+          z: Math.max(-80, Math.min(80, nextZ)),
         };
         targetPosition.current = { x: next.x, z: next.z };
         onOverrideChange(id, next);
@@ -165,9 +175,14 @@ function DraggableCharacter({
         if (!editMode) return;
         event.stopPropagation();
         isDragging.current = false;
-        (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(event.pointerId);
+        (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(
+          event.pointerId,
+        );
       }}
       onPointerCancel={() => {
+        isDragging.current = false;
+      }}
+      onPointerMissed={() => {
         isDragging.current = false;
       }}
       onClick={(event) => {
@@ -208,6 +223,8 @@ function DraggableFire({
   onSelect: (modelId: string) => void;
   onOverrideChange: (next: ModelOverride) => void;
 }) {
+  const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
+  const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
   const dragOffset = useRef({ x: 0, z: 0 });
   const isDragging = useRef(false);
@@ -226,19 +243,23 @@ function DraggableFire({
         event.stopPropagation();
         onSelect('fire');
         isDragging.current = true;
-        (event.target as { setPointerCapture?: (pointerId: number) => void } | null)?.setPointerCapture?.(event.pointerId);
+        (event.target as { setPointerCapture?: (pointerId: number) => void } | null)?.setPointerCapture?.(
+          event.pointerId,
+        );
+        event.ray.intersectPlane(dragPlane, dragPoint);
         dragOffset.current = {
-          x: targetPosition.current.x - event.point.x,
-          z: targetPosition.current.z - event.point.z,
+          x: override.x - dragPoint.x,
+          z: override.z - dragPoint.z,
         };
       }}
       onPointerMove={(event) => {
         if (!editMode || !isDragging.current) return;
         event.stopPropagation();
+        event.ray.intersectPlane(dragPlane, dragPoint);
         const next = {
           ...override,
-          x: event.point.x + dragOffset.current.x,
-          z: event.point.z + dragOffset.current.z,
+          x: Math.max(-80, Math.min(80, dragPoint.x + dragOffset.current.x)),
+          z: Math.max(-80, Math.min(80, dragPoint.z + dragOffset.current.z)),
         };
         targetPosition.current = { x: next.x, z: next.z };
         onOverrideChange(next);
@@ -247,7 +268,15 @@ function DraggableFire({
         if (!editMode) return;
         event.stopPropagation();
         isDragging.current = false;
-        (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(event.pointerId);
+        (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(
+          event.pointerId,
+        );
+      }}
+      onPointerCancel={() => {
+        isDragging.current = false;
+      }}
+      onPointerMissed={() => {
+        isDragging.current = false;
       }}
       onClick={(event) => {
         if (!editMode) return;
@@ -312,10 +341,19 @@ export default function LandingScene3D({
     return null;
   }
 
+  const canvasScalePercent = tuning.sceneCanvasScale * 100;
+  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
+
   return (
     <div
       className="scene-layer"
-      style={{ transform: `translate(${tuning.sceneOffsetX}%, ${tuning.sceneOffsetY}%)` }}
+      style={{
+        width: `${canvasScalePercent}%`,
+        height: `${canvasScalePercent}%`,
+        left: `${canvasInsetPercent}%`,
+        top: `${canvasInsetPercent}%`,
+        transform: `translate(${tuning.sceneOffsetX}%, ${tuning.sceneOffsetY}%)`,
+      }}
       aria-hidden="true"
     >
       <Canvas camera={{ position: [tuning.cameraX, tuning.cameraY, tuning.cameraZ], fov: tuning.fov }} shadows>
@@ -326,7 +364,7 @@ export default function LandingScene3D({
         <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[tuning.sceneRadius, 64]} />
+          <circleGeometry args={[tuning.sceneRadius, 72]} />
           <meshStandardMaterial color="#2e4a42" flatShading />
         </mesh>
 
