@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
-  type CharacterOverride,
+  type ModelOverride,
   type SceneTuning,
 } from './components/LandingScene3D';
 import PeoplePanel from './components/PeoplePanel';
@@ -13,6 +13,8 @@ import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
+type EditableModelId = string | 'fire';
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -22,17 +24,7 @@ const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
 
 const sceneTuningStorageKey = 'gfl-scene-tuning-v1';
 
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides'>;
-
-type TuningField = {
-  key: NumericSceneTuningKey;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-};
-
-const tuningFields: TuningField[] = [
+const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: number; max: number; step: number }> = [
   { key: 'cameraX', label: 'Camera X', min: 2, max: 14, step: 0.1 },
   { key: 'cameraY', label: 'Camera Y', min: 1.5, max: 12, step: 0.1 },
   { key: 'cameraZ', label: 'Camera Z (distance)', min: 2, max: 14, step: 0.1 },
@@ -42,14 +34,17 @@ const tuningFields: TuningField[] = [
   { key: 'characterScale', label: 'Character Scale', min: 0.4, max: 1.4, step: 0.01 },
   { key: 'sceneOffsetX', label: 'Scene Offset X (%)', min: -40, max: 20, step: 0.5 },
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
-  { key: 'sceneRadius', label: 'Scene Size / Radius', min: 4, max: 24, step: 0.5 },
+  { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
 ];
 
-const perCharacterFields: Array<{ key: keyof CharacterOverride; min: number; max: number; step: number }> = [
-  { key: 'scale', min: 0.4, max: 1.6, step: 0.01 },
-  { key: 'x', min: -8, max: 8, step: 0.05 },
-  { key: 'y', min: -2, max: 2, step: 0.05 },
-  { key: 'z', min: -8, max: 4, step: 0.05 },
+const modelFields: Array<{ key: keyof ModelOverride; min: number; max: number; step: number }> = [
+  { key: 'scale', min: 0.4, max: 1.8, step: 0.01 },
+  { key: 'x', min: -20, max: 20, step: 0.05 },
+  { key: 'y', min: -3, max: 3, step: 0.05 },
+  { key: 'z', min: -20, max: 20, step: 0.05 },
+  { key: 'rotX', min: -3.14, max: 3.14, step: 0.01 },
+  { key: 'rotY', min: -3.14, max: 3.14, step: 0.01 },
+  { key: 'rotZ', min: -3.14, max: 3.14, step: 0.01 },
 ];
 
 export default function Home() {
@@ -60,7 +55,7 @@ export default function Home() {
   const [scene3DFailed, setScene3DFailed] = useState(false);
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
-  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -74,6 +69,10 @@ export default function Home() {
         characterOverrides: {
           ...current.characterOverrides,
           ...(parsed.characterOverrides ?? {}),
+        },
+        fireOverride: {
+          ...current.fireOverride,
+          ...(parsed.fireOverride ?? {}),
         },
       }));
     } catch {
@@ -91,9 +90,10 @@ export default function Home() {
     [],
   );
 
-  const selectedCharacter = selectedCharacterId
-    ? sceneCharacters.find((character) => character.id === selectedCharacterId)
-    : null;
+  const selectedCharacter =
+    selectedModelId && selectedModelId !== 'fire'
+      ? sceneCharacters.find((character) => character.id === selectedModelId)
+      : null;
 
   function handleModeChange(nextMode: Mode) {
     setMode(nextMode);
@@ -118,20 +118,20 @@ export default function Home() {
     setScene3DFailed(true);
   }
 
-  function handleTuningChange(key: keyof SceneTuning, value: number) {
+  function handleTuningChange(key: NumericSceneTuningKey, value: number) {
     setSceneTuning((current) => ({ ...current, [key]: value }));
   }
 
   function handleTuningReset() {
     setSceneTuning(defaultSceneTuning);
-    setSelectedCharacterId(null);
+    setSelectedModelId(null);
   }
 
   function handleToggleEditMode() {
     setEditMode((enabled) => {
       const next = !enabled;
       if (!next) {
-        setSelectedCharacterId(null);
+        setSelectedModelId(null);
       }
       return next;
     });
@@ -141,19 +141,29 @@ export default function Home() {
     await navigator.clipboard.writeText(JSON.stringify(sceneTuning, null, 2));
   }
 
-  function getCharacterOverride(characterId: string): CharacterOverride {
+  function getCharacterOverride(characterId: string): ModelOverride {
     const character = sceneCharacters.find((item) => item.id === characterId);
     const [x, y, z] = character?.config.position ?? [0, 0, 0];
+    const [rotX, rotY, rotZ] = character?.config.rotation ?? [0, 0, 0];
 
     return sceneTuning.characterOverrides[characterId] ?? {
       x,
       y,
       z,
       scale: 1,
+      rotX,
+      rotY,
+      rotZ,
     };
   }
 
-  function updateCharacterOverride(characterId: string, nextOverride: CharacterOverride) {
+  function getSelectedModelOverride(): ModelOverride | null {
+    if (!selectedModelId) return null;
+    if (selectedModelId === 'fire') return sceneTuning.fireOverride;
+    return getCharacterOverride(selectedModelId);
+  }
+
+  function updateCharacterOverride(characterId: string, nextOverride: ModelOverride) {
     setSceneTuning((current) => ({
       ...current,
       characterOverrides: {
@@ -163,9 +173,25 @@ export default function Home() {
     }));
   }
 
-  function handleCharacterFieldChange(characterId: string, key: keyof CharacterOverride, value: number) {
-    const current = getCharacterOverride(characterId);
-    updateCharacterOverride(characterId, { ...current, [key]: value });
+  function updateFireOverride(nextOverride: ModelOverride) {
+    setSceneTuning((current) => ({
+      ...current,
+      fireOverride: nextOverride,
+    }));
+  }
+
+  function handleSelectedModelFieldChange(key: keyof ModelOverride, value: number) {
+    if (!selectedModelId) return;
+
+    const current = getSelectedModelOverride();
+    if (!current) return;
+    const next = { ...current, [key]: value };
+
+    if (selectedModelId === 'fire') {
+      updateFireOverride(next);
+    } else {
+      updateCharacterOverride(selectedModelId, next);
+    }
   }
 
   return (
@@ -177,9 +203,10 @@ export default function Home() {
           onRuntimeError={handleSceneRuntimeError}
           tuning={sceneTuning}
           editMode={editMode}
-          selectedCharacterId={selectedCharacterId}
-          onSelectCharacter={setSelectedCharacterId}
+          selectedModelId={selectedModelId}
+          onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
           onCharacterOverrideChange={updateCharacterOverride}
+          onFireOverrideChange={updateFireOverride}
         />
       )}
 
@@ -201,7 +228,31 @@ export default function Home() {
           {editMode && (
             <aside className="tuning-panel">
               <h3>Scene edit mode</h3>
-              <p>Drag characters directly in the scene. Sliders update and persist automatically.</p>
+              <p>Drag models in X/Z, then fine tune with sliders. Values auto-save.</p>
+
+              {selectedModelId && (
+                <section className="character-editor">
+                  <h4>Model: {selectedModelId === 'fire' ? 'fire' : selectedCharacter?.id ?? selectedModelId}</h4>
+                  <div className="tuning-fields">
+                    {modelFields.map((field) => (
+                      <label key={field.key}>
+                        <span>{field.key.toUpperCase()}</span>
+                        <input
+                          type="range"
+                          min={field.min}
+                          max={field.max}
+                          step={field.step}
+                          value={getSelectedModelOverride()?.[field.key] ?? 0}
+                          onChange={(event) =>
+                            handleSelectedModelFieldChange(field.key, Number(event.target.value))
+                          }
+                        />
+                        <strong>{(getSelectedModelOverride()?.[field.key] ?? 0).toFixed(2)}</strong>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <div className="tuning-fields">
                 {tuningFields.map((field) => (
@@ -219,34 +270,6 @@ export default function Home() {
                   </label>
                 ))}
               </div>
-
-              {selectedCharacter && (
-                <section className="character-editor">
-                  <h4>Character: {selectedCharacter.id}</h4>
-                  <div className="tuning-fields">
-                    {perCharacterFields.map((field) => (
-                      <label key={field.key}>
-                        <span>{field.key.toUpperCase()}</span>
-                        <input
-                          type="range"
-                          min={field.min}
-                          max={field.max}
-                          step={field.step}
-                          value={getCharacterOverride(selectedCharacter.id)[field.key]}
-                          onChange={(event) =>
-                            handleCharacterFieldChange(
-                              selectedCharacter.id,
-                              field.key,
-                              Number(event.target.value),
-                            )
-                          }
-                        />
-                        <strong>{getCharacterOverride(selectedCharacter.id)[field.key].toFixed(2)}</strong>
-                      </label>
-                    ))}
-                  </div>
-                </section>
-              )}
 
               <div className="tuning-actions">
                 <button onClick={handleTuningReset}>Reset all</button>
