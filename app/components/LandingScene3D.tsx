@@ -126,14 +126,14 @@ export const defaultSceneTuning: SceneTuning = {
 
 const peopleModeTargetTuning = {
   cameraX: 6.1,
-  cameraY: 11,
-  cameraZ: 6.9,
-  fov: 28,
+  cameraY: 7.4,
+  cameraZ: 5.8,
+  fov: 39,
   fogNear: 12,
   fogFar: 31,
   characterScale: 0.78,
-  sceneOffsetX: -10.5,
-  sceneOffsetY: 11,
+  sceneOffsetX: 0,
+  sceneOffsetY: 9.5,
   sceneCanvasScale: 1.4,
   sceneRadius: 40,
 };
@@ -853,8 +853,8 @@ export default function LandingScene3D({
           const lineupSlot = getLineupTarget(index, orderedCharacters.length);
           const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
           const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = slotX * 0.2;
-          const ndcY = 0.42 - lineupSlot.row * 0.28;
+          const ndcX = slotX * 0.34;
+          const ndcY = 0.16 - lineupSlot.row * 0.5;
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
