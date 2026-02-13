@@ -672,6 +672,12 @@ function projectNdcToGround(
   };
 }
 
+function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fov: number): number {
+  const center = projectNdcToGround(0, 0.02, cameraX, cameraY, cameraZ, fov);
+  const lower = projectNdcToGround(0, -0.55, cameraX, cameraY, cameraZ, fov);
+  return Math.atan2(lower.x - center.x, lower.z - center.z);
+}
+
 export default function LandingScene3D({
   characters,
   movementBehavior = 'idle',
@@ -744,7 +750,7 @@ export default function LandingScene3D({
   const backgroundColor = homeBg.clone().lerp(peopleBg, peopleTransitionProgress).getStyle();
   const fogColor = backgroundColor;
   const groundColor = homeGround.clone().lerp(peopleGround, peopleTransitionProgress).getStyle();
-  const southFacingY = 1;
+  const southFacingY = getScreenSouthYaw(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ, effectiveTuning.fov);
   const decorAlpha = 1 - peopleTransitionProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
 
@@ -843,8 +849,8 @@ export default function LandingScene3D({
           const lineupSlot = getLineupTarget(index, orderedCharacters.length);
           const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
           const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = slotX * 0.34;
-          const ndcY = 0.12 - lineupSlot.row * 0.42;
+          const ndcX = slotX * 0.24;
+          const ndcY = 0.3 - lineupSlot.row * 0.32;
           const lineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
