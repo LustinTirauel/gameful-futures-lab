@@ -86,7 +86,7 @@ export default function CharacterLayer({
 
   return (
     <section className="characters">
-      {activePeople.map((person) => {
+      {activePeople.map((person, index) => {
         const running = movementBehavior === 'run';
         return (
           <motion.article
