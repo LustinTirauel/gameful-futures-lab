@@ -183,7 +183,7 @@ function DraggableCharacter({
   isPeopleMode,
   southFacingY,
   isPreRunTurning,
-  peopleRunProgress,
+  peopleTransitionProgress,
   onArrivalChange,
   onActivate,
 }: {
@@ -200,7 +200,7 @@ function DraggableCharacter({
   isPeopleMode: boolean;
   southFacingY: number;
   isPreRunTurning: boolean;
-  peopleRunProgress: number;
+  peopleTransitionProgress: number;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -219,7 +219,7 @@ function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
-    if (!isPeopleMode || editMode) return;
+    if (editMode) return;
 
     const currentX = groupRef.current?.position.x ?? override.x;
     const currentZ = groupRef.current?.position.z ?? override.z;
@@ -232,27 +232,22 @@ function DraggableCharacter({
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const inPeopleTransition = isPeopleMode && !editMode;
+    const inPeopleTransition = !editMode && (isPeopleMode || peopleTransitionProgress > 0.001);
 
     if (inPeopleTransition) {
-      const start = peopleStartPosition.current;
-      const desiredX = isPreRunTurning
-        ? start.x
-        : start.x + (lineupTarget.x - start.x) * peopleRunProgress;
-      const desiredZ = isPreRunTurning
-        ? start.z
-        : start.z + (lineupTarget.z - start.z) * peopleRunProgress;
+      const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
+      const desiredZ = override.z + (lineupTarget.z - override.z) * peopleTransitionProgress;
 
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const hasArrived = !isPreRunTurning && peopleRunProgress >= 1;
+      const hasArrived = isPeopleMode && !isPreRunTurning && peopleTransitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = !isPreRunTurning && peopleRunProgress > 0 && peopleRunProgress < 1;
+      const isRunningNow = !isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -260,9 +255,11 @@ function DraggableCharacter({
       const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
       groupRef.current.position.y = override.y + bob;
 
+      const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
+      const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
       const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
-      const runDirectionY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
-      const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : southFacingY;
+      const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
+      const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? southFacingY : override.rotY;
 
       groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.12;
       groupRef.current.rotation.x += (0 - groupRef.current.rotation.x) * 0.12;
@@ -641,11 +638,11 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
 
 
 const peopleLayoutById: Record<string, { x: number; z: number }> = {
-  alex: { x: 1.239452710720296, z: -4.9045038673994945 },
-  bea: { x: -0.567004555748718, z: -3.391044111503379 },
-  chen: { x: -1.0398800630803642, z: -2.127358555251043 },
-  dina: { x: -2.3085836412468916, z: -1.9089740860232114 },
-  eli: { x: 0.8102082736974621, z: -3.7033402810562333 },
+  alex: { x: 1.4, z: -4.55 },
+  bea: { x: -0.15, z: -4.05 },
+  chen: { x: -1.55, z: -3.35 },
+  dina: { x: -1.0, z: -2.2 },
+  eli: { x: 0.85, z: -2.85 },
 };
 
 function getLineupTarget(characterId: string, index: number, total: number): { x: number; z: number } {
@@ -709,15 +706,10 @@ export default function LandingScene3D({
   const isPeopleMode = mode === 'people';
   const preRunTurnSeconds = tuning.preRunTurnSeconds;
   const runDurationSeconds = tuning.runDurationSeconds;
-  const [transitionElapsed, setTransitionElapsed] = useState(0);
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
-  const peopleTransitionProgress = isPeopleMode
-    ? Math.max(0, Math.min(1, transitionElapsed / totalTransitionSeconds))
-    : 0;
-  const peopleRunProgress = isPeopleMode
-    ? Math.max(0, Math.min(1, (transitionElapsed - preRunTurnSeconds) / runDurationSeconds))
-    : 0;
-  const isPreRunTurning = isPeopleMode && transitionElapsed < preRunTurnSeconds;
+  const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
+  const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
+  const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
   const effectiveTuning = {
     cameraX: lerpNumber(tuning.cameraX, peopleModeTargetTuning.cameraX, peopleTransitionProgress),
@@ -753,9 +745,12 @@ export default function LandingScene3D({
 
 
   useEffect(() => {
-    if (!isPeopleMode) {
-      setTransitionElapsed(0);
-      setArrivedIds({});
+    const target = isPeopleMode ? 1 : 0;
+    const startProgress = peopleTransitionProgress;
+    const delta = target - startProgress;
+
+    if (Math.abs(delta) < 0.0001) {
+      if (!isPeopleMode) setArrivedIds({});
       return;
     }
 
@@ -763,13 +758,21 @@ export default function LandingScene3D({
     let raf = 0;
 
     const tick = (time: number) => {
-      setTransitionElapsed((time - start) / 1000);
-      raf = window.requestAnimationFrame(tick);
+      const elapsed = (time - start) / 1000;
+      const t = Math.max(0, Math.min(1, elapsed / totalTransitionSeconds));
+      const nextProgress = startProgress + delta * t;
+      setPeopleTransitionProgress(nextProgress);
+
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+      } else if (!isPeopleMode) {
+        setArrivedIds({});
+      }
     };
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPeopleMode]);
+  }, [isPeopleMode, totalTransitionSeconds]);
 
 
   if (!isWebGLAvailable) {
@@ -862,7 +865,7 @@ export default function LandingScene3D({
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
                 isPreRunTurning={isPreRunTurning}
-                peopleRunProgress={peopleRunProgress}
+                peopleTransitionProgress={peopleTransitionProgress}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
