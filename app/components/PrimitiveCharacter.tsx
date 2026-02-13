@@ -26,6 +26,9 @@ type PrimitiveCharacterProps = GroupProps & {
   accessories?: Accessory[];
   colors?: Partial<CharacterColors>;
   pose?: CharacterPose;
+  locomotion?: 'idle' | 'run';
+  hoverBehavior?: 'none' | 'wave';
+  onActivate?: () => void;
 };
 
 const defaultColors: CharacterColors = {
@@ -76,6 +79,9 @@ export default function PrimitiveCharacter({
   accessories = [],
   colors,
   pose = 'standing',
+  locomotion = 'idle',
+  hoverBehavior = 'none',
+  onActivate,
   ...groupProps
 }: PrimitiveCharacterProps) {
   const palette = { ...defaultColors, ...colors };
@@ -89,6 +95,8 @@ export default function PrimitiveCharacter({
   const fishingRodRef = useRef<Group>(null);
   const speechBubbleRef = useRef<Group>(null);
   const pillowRef = useRef<Group>(null);
+  const rightArmRef = useRef<Group>(null);
+  const legRefs = useRef<Array<Group | null>>([]);
 
   useFrame(({ clock }, delta) => {
     if (!rootRef.current) return;
@@ -130,6 +138,27 @@ export default function PrimitiveCharacter({
     if (pillowRef.current && pose === 'sleeping') {
       pillowRef.current.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.06);
     }
+
+    if (rightArmRef.current) {
+      if (hovered && hoverBehavior === 'wave') {
+        rightArmRef.current.rotation.z = -0.5 + Math.sin(elapsed * 7.5) * 0.7;
+        rightArmRef.current.rotation.x = 0.15;
+      } else {
+        rightArmRef.current.rotation.z = -0.18;
+        rightArmRef.current.rotation.x = 0;
+      }
+    }
+
+    legRefs.current.forEach((leg, index) => {
+      if (!leg) return;
+
+      if (locomotion === 'run') {
+        const phase = index === 0 ? 0 : Math.PI;
+        leg.rotation.x = Math.sin(elapsed * 10 + phase) * 0.5;
+      } else {
+        leg.rotation.x *= 0.82;
+      }
+    });
   });
 
   const triggerReaction = () => {
@@ -241,6 +270,7 @@ export default function PrimitiveCharacter({
       onClick={(event) => {
         event.stopPropagation();
         triggerReaction();
+        onActivate?.();
       }}
       onPointerOver={(event) => {
         event.stopPropagation();
@@ -289,8 +319,24 @@ export default function PrimitiveCharacter({
           </mesh>
         )}
 
-        {[ -config.legSpread / 2, config.legSpread / 2 ].map((x, index) => (
-          <group key={x} position={[x, -0.18, 0.02]}>
+
+        <group position={[-0.23, 0.16, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.08, 0.3, 0.08]} />
+            <meshStandardMaterial color={palette.body} flatShading />
+          </mesh>
+        </group>
+        <group ref={rightArmRef} position={[0.23, 0.16, 0]} rotation={[0, 0, -0.18]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.08, 0.3, 0.08]} />
+            <meshStandardMaterial color={palette.body} flatShading />
+          </mesh>
+        </group>
+
+        {[-config.legSpread / 2, config.legSpread / 2].map((x, index) => (
+          <group key={x} ref={(node) => {
+              legRefs.current[index] = node;
+            }} position={[x, -0.18, 0.02]}>
             {legShape === 'box' ? (
               <mesh castShadow>
                 <boxGeometry args={[0.12, 0.32, 0.12]} />
