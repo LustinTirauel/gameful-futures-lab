@@ -1,13 +1,13 @@
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
-import { people } from '../data/content';
+import { people, type CharacterBehavior } from '../data/content';
 
 type Mode = 'home' | 'people' | 'projects';
 
 type CharacterLayerProps = {
   mode: Mode;
   reactionId: string | null;
-  movementBehavior: 'idle' | 'run';
+  movementBehavior: CharacterBehavior;
   onReact: (personId: string) => void;
   onSelectPerson: (personId: string) => void;
 };
@@ -33,15 +33,20 @@ export default function CharacterLayer({
 
   return (
     <section className="characters">
-      {activePeople.map((person, index) => {
+      {activePeople.map((person) => {
         const running = movementBehavior === 'run';
         return (
           <motion.article
             key={`${mode}-${person.id}`}
             className="char"
-            initial={{ x: -180, opacity: 0.7 }}
+            style={{
+              left: `${person.x}%`,
+              top: `${person.y}%`,
+              zIndex: person.zIndex,
+            }}
+            initial={{ x: -180, y: -20, opacity: 0.7 }}
             animate={{
-              x: running ? index * 8 : 0,
+              x: running ? 8 : 0,
               y: reactionId === person.id ? -16 : 0,
               opacity: 1,
               rotate: running ? [0, -2, 2, 0] : 0,
