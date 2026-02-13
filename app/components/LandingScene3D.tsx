@@ -33,6 +33,8 @@ export type SceneTuning = {
   sceneOffsetY: number;
   sceneCanvasScale: number;
   sceneRadius: number;
+  preRunTurnSeconds: number;
+  runDurationSeconds: number;
   characterOverrides: Record<string, ModelOverride>;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
@@ -50,6 +52,8 @@ export const defaultSceneTuning: SceneTuning = {
   sceneOffsetY: 6,
   sceneCanvasScale: 1.4,
   sceneRadius: 40,
+  preRunTurnSeconds: 0.9,
+  runDurationSeconds: 2,
   characterOverrides: {
     alex: {
       x: -2.4920371576490377,
@@ -672,8 +676,8 @@ export default function LandingScene3D({
   const canvasScalePercent = tuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const isPeopleMode = mode === 'people';
-  const preRunTurnSeconds = 0.9;
-  const runDurationSeconds = 2;
+  const preRunTurnSeconds = tuning.preRunTurnSeconds;
+  const runDurationSeconds = tuning.runDurationSeconds;
   const [transitionElapsed, setTransitionElapsed] = useState(0);
   const peopleRunProgress = isPeopleMode
     ? Math.max(0, Math.min(1, (transitionElapsed - preRunTurnSeconds) / runDurationSeconds))
