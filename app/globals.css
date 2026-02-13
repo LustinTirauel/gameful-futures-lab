@@ -1,3 +1,8 @@
+:root {
+  --char-scale-mobile: 0.74;
+  --char-scale-desktop: 0.88;
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #050505; color: #d0d0d0; }
 body { min-height: 100vh; }
@@ -16,6 +21,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   inset: 0;
   z-index: 2;
+  transform: translate(-22%, 18%);
 }
 
 .scene-layer canvas {
@@ -66,29 +72,31 @@ a { color: inherit; text-decoration: none; }
 
 .characters {
   position: absolute;
-  bottom: 12%;
-  left: 8%;
-  right: 8%;
-  height: 230px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  inset: 0;
   z-index: 12;
 }
 
 .char {
-  width: 88px;
-  height: 140px;
-  border-radius: 46px;
+  width: 74px;
+  height: 118px;
+  border-radius: 40px;
   border: 2px solid #c7d8ca;
   background: linear-gradient(#6f9576, #3f5747);
-  position: relative;
+  position: absolute;
+  transform: translate(-50%, -100%) scale(var(--char-scale-mobile));
+  transform-origin: 50% 100%;
   cursor: pointer;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 12px;
-  font-size: 11px;
+  padding-top: 10px;
+  font-size: 10px;
+}
+
+@media (min-width: 900px) {
+  .char {
+    transform: translate(-50%, -100%) scale(var(--char-scale-desktop));
+  }
 }
 
 .nameplate {
@@ -148,4 +156,10 @@ a { color: inherit; text-decoration: none; }
   border-radius: 10px;
   padding: 12px;
   max-width: 420px;
+}
+
+@media (max-width: 900px) {
+  .scene-layer {
+    transform: translate(-12%, 10%);
+  }
 }
