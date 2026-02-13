@@ -122,6 +122,24 @@ export const defaultSceneTuning: SceneTuning = {
   },
 };
 
+const peopleModeTargetTuning = {
+  cameraX: 6.1,
+  cameraY: 11,
+  cameraZ: 6.9,
+  fov: 28,
+  fogNear: 12,
+  fogFar: 31,
+  characterScale: 0.78,
+  sceneOffsetX: -10.5,
+  sceneOffsetY: 11,
+  sceneCanvasScale: 1.4,
+  sceneRadius: 40,
+};
+
+function lerpNumber(from: number, to: number, progress: number): number {
+  return from + (to - from) * progress;
+}
+
 type LandingScene3DProps = {
   characters: Array<{ id: string; name: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
@@ -136,17 +154,17 @@ type LandingScene3DProps = {
   onCharacterActivate?: (characterId: string) => void;
 };
 
-function CameraController({ tuning }: { tuning: SceneTuning }) {
+function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
   const { camera } = useThree();
 
   useEffect(() => {
-    camera.position.set(tuning.cameraX, tuning.cameraY, tuning.cameraZ);
+    camera.position.set(cameraX, cameraY, cameraZ);
     if ('fov' in camera) {
-      camera.fov = tuning.fov;
+      camera.fov = fov;
       camera.updateProjectionMatrix();
     }
     camera.lookAt(0, 0, 0);
-  }, [camera, tuning.cameraX, tuning.cameraY, tuning.cameraZ, tuning.fov]);
+  }, [camera, cameraX, cameraY, cameraZ, fov]);
 
   return null;
 }
@@ -623,11 +641,11 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
 
 
 const peopleLayoutById: Record<string, { x: number; z: number }> = {
-  alex: { x: -3.4478207201773268, z: -2.6638895694034117 },
-  bea: { x: -1.6446857861483142, z: -4.348438170194357 },
-  chen: { x: -0.3331198570628965, z: -1.5872559018315946 },
-  dina: { x: 0.26188248449103674, z: -5.83172042054972 },
-  eli: { x: 1.4112842463534754, z: -3.0675656648217546 },
+  alex: { x: 1.239452710720296, z: -4.9045038673994945 },
+  bea: { x: -0.567004555748718, z: -3.391044111503379 },
+  chen: { x: -1.0398800630803642, z: -2.127358555251043 },
+  dina: { x: -2.3085836412468916, z: -1.9089740860232114 },
+  eli: { x: 0.8102082736974621, z: -3.7033402810562333 },
 };
 
 function getLineupTarget(characterId: string, index: number, total: number): { x: number; z: number } {
@@ -688,27 +706,49 @@ export default function LandingScene3D({
     [characters],
   );
 
-  const canvasScalePercent = tuning.sceneCanvasScale * 100;
-  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const isPeopleMode = mode === 'people';
   const preRunTurnSeconds = tuning.preRunTurnSeconds;
   const runDurationSeconds = tuning.runDurationSeconds;
   const [transitionElapsed, setTransitionElapsed] = useState(0);
+  const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
+  const peopleTransitionProgress = isPeopleMode
+    ? Math.max(0, Math.min(1, transitionElapsed / totalTransitionSeconds))
+    : 0;
   const peopleRunProgress = isPeopleMode
     ? Math.max(0, Math.min(1, (transitionElapsed - preRunTurnSeconds) / runDurationSeconds))
     : 0;
   const isPreRunTurning = isPeopleMode && transitionElapsed < preRunTurnSeconds;
+
+  const effectiveTuning = {
+    cameraX: lerpNumber(tuning.cameraX, peopleModeTargetTuning.cameraX, peopleTransitionProgress),
+    cameraY: lerpNumber(tuning.cameraY, peopleModeTargetTuning.cameraY, peopleTransitionProgress),
+    cameraZ: lerpNumber(tuning.cameraZ, peopleModeTargetTuning.cameraZ, peopleTransitionProgress),
+    fov: lerpNumber(tuning.fov, peopleModeTargetTuning.fov, peopleTransitionProgress),
+    fogNear: lerpNumber(tuning.fogNear, peopleModeTargetTuning.fogNear, peopleTransitionProgress),
+    fogFar: lerpNumber(tuning.fogFar, peopleModeTargetTuning.fogFar, peopleTransitionProgress),
+    characterScale: lerpNumber(tuning.characterScale, peopleModeTargetTuning.characterScale, peopleTransitionProgress),
+    sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleModeTargetTuning.sceneOffsetX, peopleTransitionProgress),
+    sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleModeTargetTuning.sceneOffsetY, peopleTransitionProgress),
+    sceneCanvasScale: lerpNumber(
+      tuning.sceneCanvasScale,
+      peopleModeTargetTuning.sceneCanvasScale,
+      peopleTransitionProgress,
+    ),
+    sceneRadius: lerpNumber(tuning.sceneRadius, peopleModeTargetTuning.sceneRadius, peopleTransitionProgress),
+  };
+  const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
+  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const peopleBg = useMemo(() => new Color('#2a0f24'), []);
   const homeGround = useMemo(() => new Color('#2e4a42'), []);
   const peopleGround = useMemo(() => new Color('#341730'), []);
 
-  const backgroundColor = homeBg.clone().lerp(peopleBg, peopleRunProgress).getStyle();
+  const backgroundColor = homeBg.clone().lerp(peopleBg, peopleTransitionProgress).getStyle();
   const fogColor = backgroundColor;
-  const groundColor = homeGround.clone().lerp(peopleGround, peopleRunProgress).getStyle();
+  const groundColor = homeGround.clone().lerp(peopleGround, peopleTransitionProgress).getStyle();
   const southFacingY = 1;
-  const decorAlpha = 1 - peopleRunProgress;
+  const decorAlpha = 1 - peopleTransitionProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
 
 
@@ -744,19 +784,27 @@ export default function LandingScene3D({
         height: `${canvasScalePercent}%`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
-        transform: `translate(${tuning.sceneOffsetX}%, ${tuning.sceneOffsetY}%)`,
+        transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
       }}
       aria-hidden="true"
     >
-      <Canvas camera={{ position: [tuning.cameraX, tuning.cameraY, tuning.cameraZ], fov: tuning.fov }} shadows>
-        <CameraController tuning={tuning} />
+      <Canvas
+        camera={{ position: [effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ], fov: effectiveTuning.fov }}
+        shadows
+      >
+        <CameraController
+          cameraX={effectiveTuning.cameraX}
+          cameraY={effectiveTuning.cameraY}
+          cameraZ={effectiveTuning.cameraZ}
+          fov={effectiveTuning.fov}
+        />
         <color attach="background" args={[backgroundColor]} />
-        <fog attach="fog" args={[fogColor, tuning.fogNear, tuning.fogFar]} />
+        <fog attach="fog" args={[fogColor, effectiveTuning.fogNear, effectiveTuning.fogFar]} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[tuning.sceneRadius, 72]} />
+          <circleGeometry args={[effectiveTuning.sceneRadius, 72]} />
           <meshStandardMaterial color={groundColor} flatShading />
         </mesh>
 
@@ -809,7 +857,7 @@ export default function LandingScene3D({
                 onSelect={(id) => onSelectModel?.(id)}
                 onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
                 override={override}
-                globalCharacterScale={tuning.characterScale}
+                globalCharacterScale={effectiveTuning.characterScale}
                 lineupTarget={lineupTarget}
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
