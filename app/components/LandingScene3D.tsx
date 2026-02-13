@@ -159,22 +159,22 @@ function DraggableCharacter({
       onPointerMove={(event) => {
         if (!editMode || !isDragging.current) return;
         event.stopPropagation();
-        event.ray.intersectPlane(dragPlane, dragPoint);
-        const nextX = dragPoint.x + dragOffset.current.x;
-        const nextZ = dragPoint.z + dragOffset.current.z;
+        const hit = event.ray.intersectPlane(dragPlane, dragPoint);
+        if (!hit) return;
 
-        const next = {
-          ...override,
-          x: Math.max(-80, Math.min(80, nextX)),
-          z: Math.max(-80, Math.min(80, nextZ)),
-        };
-        targetPosition.current = { x: next.x, z: next.z };
-        onOverrideChange(id, next);
+        const nextX = Math.max(-80, Math.min(80, dragPoint.x + dragOffset.current.x));
+        const nextZ = Math.max(-80, Math.min(80, dragPoint.z + dragOffset.current.z));
+        targetPosition.current = { x: nextX, z: nextZ };
       }}
       onPointerUp={(event) => {
         if (!editMode) return;
         event.stopPropagation();
         isDragging.current = false;
+        onOverrideChange(id, {
+          ...override,
+          x: targetPosition.current.x,
+          z: targetPosition.current.z,
+        });
         (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(
           event.pointerId,
         );
@@ -255,19 +255,22 @@ function DraggableFire({
       onPointerMove={(event) => {
         if (!editMode || !isDragging.current) return;
         event.stopPropagation();
-        event.ray.intersectPlane(dragPlane, dragPoint);
-        const next = {
-          ...override,
+        const hit = event.ray.intersectPlane(dragPlane, dragPoint);
+        if (!hit) return;
+        targetPosition.current = {
           x: Math.max(-80, Math.min(80, dragPoint.x + dragOffset.current.x)),
           z: Math.max(-80, Math.min(80, dragPoint.z + dragOffset.current.z)),
         };
-        targetPosition.current = { x: next.x, z: next.z };
-        onOverrideChange(next);
       }}
       onPointerUp={(event) => {
         if (!editMode) return;
         event.stopPropagation();
         isDragging.current = false;
+        onOverrideChange({
+          ...override,
+          x: targetPosition.current.x,
+          z: targetPosition.current.z,
+        });
         (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(
           event.pointerId,
         );
