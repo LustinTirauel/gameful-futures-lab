@@ -101,7 +101,7 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
           <meshStandardMaterial color="#2e4a42" flatShading />
         </mesh>
 
-        <group position={[0.7, -0.28, 0.6]}>
+        <group position={[0.25, -0.28, -2.0]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.18, 0.22, 0.12, 6]} />
             <meshStandardMaterial color="#6b4b37" flatShading />
