@@ -102,7 +102,7 @@ export const people: Person[] = [
 export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   alex: validateCharacterConfig({
     pose: 'fishing',
-    position: [-1.65, -0.2, 0.45],
+    position: [-1.9, -0.24, -1.35],
     rotation: [0, 0.45, 0],
     headShape: 'sphere',
     bodyShape: 'cylinder',
@@ -118,7 +118,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   bea: validateCharacterConfig({
     pose: 'sleeping',
-    position: [-0.65, -0.22, 0.7],
+    position: [-1.05, -0.24, -1.0],
     rotation: [0, -0.15, 0],
     headShape: 'box',
     bodyShape: 'box',
@@ -134,7 +134,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   chen: validateCharacterConfig({
     pose: 'chatting',
-    position: [0.35, -0.2, 0.35],
+    position: [0.0, -0.24, -0.75],
     rotation: [0, -0.25, 0],
     headShape: 'cone',
     bodyShape: 'cone',
@@ -150,7 +150,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   dina: validateCharacterConfig({
     pose: 'campfire-sit',
-    position: [1.2, -0.23, 0.5],
+    position: [1.05, -0.24, -1.15],
     rotation: [0, -0.8, 0],
     headShape: 'sphere',
     bodyShape: 'box',
@@ -166,7 +166,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   eli: validateCharacterConfig({
     pose: 'standing',
-    position: [1.95, -0.2, 0.2],
+    position: [2.0, -0.24, -1.5],
     rotation: [0, -0.3, 0],
     headShape: 'box',
     bodyShape: 'cylinder',

@@ -90,9 +90,9 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
 
   return (
     <div className="scene-layer" aria-hidden="true">
-      <Canvas camera={{ position: [0, 0.8, 4.6], fov: 44 }} shadows>
+      <Canvas camera={{ position: [4.6, 3.6, 4.6], fov: 34 }} shadows>
         <color attach="background" args={['#112126']} />
-        <fog attach="fog" args={['#112126', 4, 10]} />
+        <fog attach="fog" args={['#112126', 6, 14]} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
 
