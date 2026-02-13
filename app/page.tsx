@@ -56,6 +56,9 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
   'sceneRadius',
 ];
 
+
+const environmentModelIds = ['pond', 'tree-1', 'tree-2', 'tree-3', 'tree-4', 'tree-5', 'sauna', 'logs'] as const;
+
 const modelFields: Array<{ key: keyof ModelOverride; min: number; max: number; step: number }> = [
   { key: 'scale', min: 0.4, max: 1.8, step: 0.01 },
   { key: 'x', min: -20, max: 20, step: 0.05 },
@@ -244,6 +247,9 @@ export default function Home() {
   function getSelectedModelOverride(): ModelOverride | null {
     if (!selectedModelId) return null;
     if (selectedModelId === 'fire') return sceneTuning.fireOverride;
+    if (environmentModelIds.includes(selectedModelId as (typeof environmentModelIds)[number])) {
+      return sceneTuning.environmentOverrides[selectedModelId] ?? null;
+    }
     return getCharacterOverride(selectedModelId);
   }
 
@@ -269,6 +275,16 @@ export default function Home() {
     });
   }
 
+  function updateEnvironmentOverride(modelId: string, nextOverride: ModelOverride) {
+    setSceneTuning((current) => ({
+      ...current,
+      environmentOverrides: {
+        ...current.environmentOverrides,
+        [modelId]: nextOverride,
+      },
+    }));
+  }
+
   function updateFireOverride(nextOverride: ModelOverride) {
     setSceneTuning((current) => ({
       ...current,
@@ -285,6 +301,8 @@ export default function Home() {
 
     if (selectedModelId === 'fire') {
       updateFireOverride(next);
+    } else if (environmentModelIds.includes(selectedModelId as (typeof environmentModelIds)[number])) {
+      updateEnvironmentOverride(selectedModelId, next);
     } else {
       updateCharacterOverride(selectedModelId, next);
     }
@@ -304,6 +322,7 @@ export default function Home() {
           onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
           onCharacterOverrideChange={updateCharacterOverride}
           onFireOverrideChange={updateFireOverride}
+          onEnvironmentOverrideChange={updateEnvironmentOverride}
           onCharacterActivate={handleCharacterSelect}
         />
       )}
