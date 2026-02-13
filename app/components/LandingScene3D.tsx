@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import type { Mesh, PointLight } from 'three';
-import { Plane, Vector3 } from 'three';
+import { Color, Plane, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
@@ -160,6 +160,8 @@ function DraggableCharacter({
   lineupTarget,
   isPeopleMode,
   southFacingY,
+  isPreRunTurning,
+  peopleRunProgress,
   onArrivalChange,
   onActivate,
 }: {
@@ -175,6 +177,8 @@ function DraggableCharacter({
   lineupTarget: { x: number; z: number };
   isPeopleMode: boolean;
   southFacingY: number;
+  isPreRunTurning: boolean;
+  peopleRunProgress: number;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -182,9 +186,9 @@ function DraggableCharacter({
   const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
   const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
+  const peopleStartPosition = useRef({ x: override.x, z: override.z });
   const dragOffset = useRef({ x: 0, z: 0 });
   const isDragging = useRef(false);
-  const peopleModeStartTime = useRef<number | null>(null);
   const hasArrivedRef = useRef(false);
   const [isRunningInPeople, setIsRunningInPeople] = useState(false);
 
@@ -193,71 +197,68 @@ function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
-    peopleModeStartTime.current = null;
+    if (!isPeopleMode || editMode) return;
+
+    const currentX = groupRef.current?.position.x ?? override.x;
+    const currentZ = groupRef.current?.position.z ?? override.z;
+    peopleStartPosition.current = { x: currentX, z: currentZ };
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode]);
+  }, [id, isPeopleMode, editMode, override.x, override.z]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
     const inPeopleTransition = isPeopleMode && !editMode;
 
-    if (inPeopleTransition && peopleModeStartTime.current === null) {
-      peopleModeStartTime.current = clock.elapsedTime;
+    if (inPeopleTransition) {
+      const start = peopleStartPosition.current;
+      const desiredX = isPreRunTurning
+        ? start.x
+        : start.x + (lineupTarget.x - start.x) * peopleRunProgress;
+      const desiredZ = isPreRunTurning
+        ? start.z
+        : start.z + (lineupTarget.z - start.z) * peopleRunProgress;
+
+      groupRef.current.position.x = desiredX;
+      groupRef.current.position.z = desiredZ;
+
+      const hasArrived = !isPreRunTurning && peopleRunProgress >= 1;
+      if (hasArrived !== hasArrivedRef.current) {
+        hasArrivedRef.current = hasArrived;
+        onArrivalChange?.(id, hasArrived);
+      }
+
+      const isRunningNow = !isPreRunTurning && peopleRunProgress > 0 && peopleRunProgress < 1;
+      if (isRunningNow !== isRunningInPeople) {
+        setIsRunningInPeople(isRunningNow);
+      }
+
+      const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
+      groupRef.current.position.y = override.y + bob;
+
+      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const runDirectionY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : southFacingY;
+
+      groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (0 - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (0 - groupRef.current.rotation.z) * 0.12;
+    } else {
+      const smooth = isDragging.current ? 0.42 : 0.12;
+      groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
+      groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
+
+      const bob = movementBehavior === 'run' && !editMode
+        ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045
+        : 0;
+      groupRef.current.position.y = override.y + bob;
+
+      groupRef.current.rotation.y += (override.rotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (override.rotX - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (override.rotZ - groupRef.current.rotation.z) * 0.12;
     }
-
-    const transitionElapsed = inPeopleTransition && peopleModeStartTime.current !== null
-      ? clock.elapsedTime - peopleModeStartTime.current
-      : 0;
-    const runDelaySeconds = 0.9;
-    const canStartRun = !inPeopleTransition || transitionElapsed >= runDelaySeconds;
-
-    const desiredX = inPeopleTransition && canStartRun ? lineupTarget.x : override.x;
-    const desiredZ = inPeopleTransition && canStartRun ? lineupTarget.z : override.z;
-
-    targetPosition.current = { x: desiredX, z: desiredZ };
-
-    const smooth = isDragging.current ? 0.42 : 0.12;
-    groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
-    groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
-
-    const distanceToTarget = Math.hypot(desiredX - groupRef.current.position.x, desiredZ - groupRef.current.position.z);
-    const isRunningNow =
-      (inPeopleTransition && canStartRun && distanceToTarget > 0.08) || (movementBehavior === 'run' && !isPeopleMode);
-    const hasArrived = inPeopleTransition && canStartRun && distanceToTarget <= 0.08;
-
-    if (hasArrived !== hasArrivedRef.current) {
-      hasArrivedRef.current = hasArrived;
-      onArrivalChange?.(id, hasArrived);
-    }
-
-    if (isPeopleMode && !editMode && isRunningNow !== isRunningInPeople) {
-      setIsRunningInPeople(isRunningNow);
-    }
-
-    const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
-    groupRef.current.position.y = override.y + bob;
-
-    const runDirectionY = Math.atan2(
-      targetPosition.current.x - groupRef.current.position.x,
-      targetPosition.current.z - groupRef.current.position.z,
-    );
-
-    const desiredRotY = inPeopleTransition
-      ? !canStartRun
-        ? Math.atan2(lineupTarget.x - groupRef.current.position.x, lineupTarget.z - groupRef.current.position.z)
-        : isRunningNow
-          ? runDirectionY
-          : southFacingY
-      : override.rotY;
-    const desiredRotX = inPeopleTransition ? 0 : override.rotX;
-    const desiredRotZ = inPeopleTransition ? 0 : override.rotZ;
-
-    groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.12;
-    groupRef.current.rotation.x += (desiredRotX - groupRef.current.rotation.x) * 0.12;
-    groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
   });
 
   return (
@@ -671,11 +672,24 @@ export default function LandingScene3D({
   const canvasScalePercent = tuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const isPeopleMode = mode === 'people';
-  const backgroundColor = isPeopleMode ? '#2a0f24' : '#112126';
-  const fogColor = isPeopleMode ? '#2a0f24' : '#112126';
-  const southFacingY = Math.atan2(tuning.cameraX, tuning.cameraZ);
-  const [decorAlpha, setDecorAlpha] = useState(1);
+  const preRunTurnSeconds = 0.9;
+  const runDurationSeconds = 5;
   const [transitionElapsed, setTransitionElapsed] = useState(0);
+  const peopleRunProgress = isPeopleMode
+    ? Math.max(0, Math.min(1, (transitionElapsed - preRunTurnSeconds) / runDurationSeconds))
+    : 0;
+  const isPreRunTurning = isPeopleMode && transitionElapsed < preRunTurnSeconds;
+
+  const homeBg = useMemo(() => new Color('#112126'), []);
+  const peopleBg = useMemo(() => new Color('#2a0f24'), []);
+  const homeGround = useMemo(() => new Color('#2e4a42'), []);
+  const peopleGround = useMemo(() => new Color('#341730'), []);
+
+  const backgroundColor = homeBg.clone().lerp(peopleBg, peopleRunProgress).getStyle();
+  const fogColor = backgroundColor;
+  const groundColor = homeGround.clone().lerp(peopleGround, peopleRunProgress).getStyle();
+  const southFacingY = Math.atan2(tuning.cameraX, tuning.cameraZ);
+  const decorAlpha = 1 - peopleRunProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
 
 
@@ -697,23 +711,6 @@ export default function LandingScene3D({
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, [isPeopleMode]);
-
-  useEffect(() => {
-    let raf = 0;
-
-    const tick = () => {
-      setDecorAlpha((current) => {
-        const fadeStarted = transitionElapsed >= 0.9;
-        const targetAlpha = isPeopleMode && fadeStarted ? 0 : 1;
-        const next = current + (targetAlpha - current) * 0.018;
-        return Math.abs(next - targetAlpha) < 0.01 ? targetAlpha : next;
-      });
-      raf = window.requestAnimationFrame(tick);
-    };
-
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, [isPeopleMode, transitionElapsed]);
 
 
   if (!isWebGLAvailable) {
@@ -741,7 +738,7 @@ export default function LandingScene3D({
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[tuning.sceneRadius, 72]} />
-          <meshStandardMaterial color={isPeopleMode ? '#341730' : '#2e4a42'} flatShading />
+          <meshStandardMaterial color={groundColor} flatShading />
         </mesh>
 
         {decorAlpha > 0.01 && <EnvironmentProps alpha={decorAlpha} />}
@@ -792,6 +789,8 @@ export default function LandingScene3D({
                 lineupTarget={lineupTarget}
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
+                isPreRunTurning={isPreRunTurning}
+                peopleRunProgress={peopleRunProgress}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
