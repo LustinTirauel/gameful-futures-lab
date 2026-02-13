@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
@@ -57,6 +57,17 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
+  const modelUpdateFrameRef = useRef<number | null>(null);
+  const pendingModelUpdateRef = useRef<{ modelId: EditableModelId; next: ModelOverride } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (modelUpdateFrameRef.current !== null) {
+        window.cancelAnimationFrame(modelUpdateFrameRef.current);
+      }
+    };
+  }, []);
+
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -82,7 +93,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
+    const saveHandle = window.setTimeout(() => {
+      localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
+    }, 180);
+
+    return () => window.clearTimeout(saveHandle);
   }, [sceneTuning]);
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
@@ -192,6 +207,27 @@ export default function Home() {
     }));
   }
 
+
+  function scheduleModelUpdate(modelId: EditableModelId, next: ModelOverride) {
+    pendingModelUpdateRef.current = { modelId, next };
+
+    if (modelUpdateFrameRef.current !== null) {
+      return;
+    }
+
+    modelUpdateFrameRef.current = window.requestAnimationFrame(() => {
+      const payload = pendingModelUpdateRef.current;
+      modelUpdateFrameRef.current = null;
+      if (!payload) return;
+
+      if (payload.modelId === 'fire') {
+        updateFireOverride(payload.next);
+      } else {
+        updateCharacterOverride(payload.modelId, payload.next);
+      }
+    });
+  }
+
   function handleSelectedModelFieldChange(key: keyof ModelOverride, value: number) {
     if (!selectedModelId) return;
 
@@ -199,11 +235,7 @@ export default function Home() {
     if (!current) return;
     const next = { ...current, [key]: value };
 
-    if (selectedModelId === 'fire') {
-      updateFireOverride(next);
-    } else {
-      updateCharacterOverride(selectedModelId, next);
-    }
+    scheduleModelUpdate(selectedModelId, next);
   }
 
   return (
