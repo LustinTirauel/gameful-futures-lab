@@ -15,7 +15,7 @@ import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'fireOverride' | 'environmentOverrides'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -97,6 +97,7 @@ export default function Home() {
           ...current.peopleViewTuning,
           ...(parsed.peopleViewTuning ?? {}),
         },
+        peopleHueColor: parsed.peopleHueColor ?? current.peopleHueColor,
         fireOverride: {
           ...current.fireOverride,
           ...(parsed.fireOverride ?? {}),
@@ -170,6 +171,11 @@ export default function Home() {
 
       return { ...current, [key]: value };
     });
+  }
+
+
+  function handlePeopleHueColorChange(value: string) {
+    setSceneTuning((current) => ({ ...current, peopleHueColor: value }));
   }
 
   function handleTuningReset() {
@@ -321,6 +327,17 @@ export default function Home() {
             <aside className="tuning-panel">
               <h3>{mode === 'people' ? 'People scene edit mode' : 'Scene edit mode'}</h3>
               <p>Drag models in X/Z, then fine tune with sliders. Values auto-save.</p>
+
+              {mode === 'people' && (
+                <label>
+                  <span>People hue color</span>
+                  <input
+                    type="color"
+                    value={sceneTuning.peopleHueColor}
+                    onChange={(event) => handlePeopleHueColorChange(event.target.value)}
+                  />
+                </label>
+              )}
 
               {selectedModelId && (
                 <section className="character-editor">

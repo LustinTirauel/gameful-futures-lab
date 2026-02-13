@@ -38,6 +38,7 @@ export type SceneTuning = {
   characterOverrides: Record<string, ModelOverride>;
   peopleCharacterOverrides: Record<string, ModelOverride>;
   peopleViewTuning: PeopleViewTuning;
+  peopleHueColor: string;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
 };
@@ -132,6 +133,7 @@ export const defaultSceneTuning: SceneTuning = {
     sceneCanvasScale: 1.4,
     sceneRadius: 40,
   },
+  peopleHueColor: '#4a002f',
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -763,11 +765,12 @@ export default function LandingScene3D({
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
-  const peopleBg = useMemo(() => new Color('#300726'), []);
+  const peopleHueBase = useMemo(() => new Color(tuning.peopleHueColor), [tuning.peopleHueColor]);
+  const peopleBg = useMemo(() => peopleHueBase.clone().multiplyScalar(0.72), [peopleHueBase]);
   const homeGround = useMemo(() => new Color('#2e4a42'), []);
-  const peopleGround = useMemo(() => new Color('#5a1e4a'), []);
+  const peopleGround = useMemo(() => peopleHueBase.clone().lerp(new Color('#bb5b95'), 0.33), [peopleHueBase]);
   const homeLight = useMemo(() => new Color('#d4f7dc'), []);
-  const peopleLight = useMemo(() => new Color('#f0b3d7'), []);
+  const peopleLight = useMemo(() => peopleHueBase.clone().lerp(new Color('#ffd4f0'), 0.62), [peopleHueBase]);
 
   const backgroundColor = homeBg.clone().lerp(peopleBg, peopleTransitionProgress).getStyle();
   const fogColor = backgroundColor;
@@ -869,11 +872,19 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
+          const ndcById: Record<string, { x: number; y: number }> = {
+            alex: { x: -0.32, y: 0.18 },
+            bea: { x: 0, y: 0.18 },
+            chen: { x: 0.32, y: 0.18 },
+            dina: { x: -0.12, y: -0.12 },
+            eli: { x: 0.16, y: -0.12 },
+          };
+          const known = ndcById[character.id];
           const lineupSlot = getLineupTarget(index, orderedCharacters.length);
           const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
           const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = slotX * 0.3;
-          const ndcY = 0.24 - lineupSlot.row * 0.42;
+          const ndcX = known?.x ?? slotX * 0.3;
+          const ndcY = known?.y ?? 0.24 - lineupSlot.row * 0.42;
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
