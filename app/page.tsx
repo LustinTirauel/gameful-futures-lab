@@ -14,7 +14,7 @@ import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride' | 'environmentOverrides'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -72,6 +72,10 @@ export default function Home() {
         characterOverrides: {
           ...current.characterOverrides,
           ...(parsed.characterOverrides ?? {}),
+        },
+        peopleCharacterOverrides: {
+          ...current.peopleCharacterOverrides,
+          ...(parsed.peopleCharacterOverrides ?? {}),
         },
         fireOverride: {
           ...current.fireOverride,
@@ -151,26 +155,12 @@ export default function Home() {
   }
 
 
-  function buildCompleteCharacterOverrides(): Record<string, ModelOverride> {
-    return Object.fromEntries(
-      sceneCharacters.map((character) => [character.id, getCharacterOverride(character.id)]),
-    );
-  }
-
-  async function handleTuningCopy() {
-    const exportPayload: SceneTuning = {
-      ...sceneTuning,
-      characterOverrides: buildCompleteCharacterOverrides(),
-    };
-    await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
-  }
-
-  function getCharacterOverride(characterId: string): ModelOverride {
+  function getDefaultCharacterOverride(characterId: string): ModelOverride {
     const character = sceneCharacters.find((item) => item.id === characterId);
     const [x, y, z] = character?.config.position ?? [0, 0, 0];
     const [rotX, rotY, rotZ] = character?.config.rotation ?? [0, 0, 0];
 
-    return sceneTuning.characterOverrides[characterId] ?? {
+    return {
       x,
       y,
       z,
@@ -181,6 +171,29 @@ export default function Home() {
     };
   }
 
+  function getCharacterOverride(characterId: string, sceneMode: Mode = mode): ModelOverride {
+    const fallback = getDefaultCharacterOverride(characterId);
+    if (sceneMode === 'people') {
+      return sceneTuning.peopleCharacterOverrides[characterId] ?? fallback;
+    }
+    return sceneTuning.characterOverrides[characterId] ?? fallback;
+  }
+
+  function buildCompleteCharacterOverrides(sceneMode: 'home' | 'people'): Record<string, ModelOverride> {
+    return Object.fromEntries(
+      sceneCharacters.map((character) => [character.id, getCharacterOverride(character.id, sceneMode)]),
+    );
+  }
+
+  async function handleTuningCopy() {
+    const exportPayload: SceneTuning = {
+      ...sceneTuning,
+      characterOverrides: buildCompleteCharacterOverrides('home'),
+      peopleCharacterOverrides: buildCompleteCharacterOverrides('people'),
+    };
+    await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
+  }
+
   function getSelectedModelOverride(): ModelOverride | null {
     if (!selectedModelId) return null;
     if (selectedModelId === 'fire') return sceneTuning.fireOverride;
@@ -188,13 +201,25 @@ export default function Home() {
   }
 
   function updateCharacterOverride(characterId: string, nextOverride: ModelOverride) {
-    setSceneTuning((current) => ({
-      ...current,
-      characterOverrides: {
-        ...current.characterOverrides,
-        [characterId]: nextOverride,
-      },
-    }));
+    setSceneTuning((current) => {
+      if (mode === 'people') {
+        return {
+          ...current,
+          peopleCharacterOverrides: {
+            ...current.peopleCharacterOverrides,
+            [characterId]: nextOverride,
+          },
+        };
+      }
+
+      return {
+        ...current,
+        characterOverrides: {
+          ...current.characterOverrides,
+          [characterId]: nextOverride,
+        },
+      };
+    });
   }
 
   function updateFireOverride(nextOverride: ModelOverride) {

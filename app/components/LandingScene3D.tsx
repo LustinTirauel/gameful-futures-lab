@@ -36,6 +36,7 @@ export type SceneTuning = {
   preRunTurnSeconds: number;
   runDurationSeconds: number;
   characterOverrides: Record<string, ModelOverride>;
+  peopleCharacterOverrides: Record<string, ModelOverride>;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
 };
@@ -101,6 +102,7 @@ export const defaultSceneTuning: SceneTuning = {
       rotZ: 0.13,
     },
   },
+  peopleCharacterOverrides: {},
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -836,7 +838,7 @@ export default function LandingScene3D({
         {orderedCharacters.map((character, index) => {
           const [baseX, baseY, baseZ] = character.config.position;
           const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
-          const override = tuning.characterOverrides[character.id] ?? {
+          const homeOverride = tuning.characterOverrides[character.id] ?? {
             x: baseX,
             y: baseY,
             z: baseZ,
@@ -851,7 +853,7 @@ export default function LandingScene3D({
           const slotX = lineupSlot.xIndex - rowCenter;
           const ndcX = slotX * 0.24;
           const ndcY = 0.3 - lineupSlot.row * 0.32;
-          const lineupTarget = projectNdcToGround(
+          const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
             effectiveTuning.cameraX,
@@ -859,6 +861,19 @@ export default function LandingScene3D({
             effectiveTuning.cameraZ,
             effectiveTuning.fov,
           );
+          const peopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+            x: projectedLineupTarget.x,
+            y: homeOverride.y,
+            z: projectedLineupTarget.z,
+            scale: homeOverride.scale,
+            rotX: homeOverride.rotX,
+            rotY: homeOverride.rotY,
+            rotZ: homeOverride.rotZ,
+          };
+          const lineupTarget = isPeopleMode
+            ? { x: peopleOverride.x, z: peopleOverride.z }
+            : projectedLineupTarget;
+          const activeOverride = isPeopleMode && editMode ? peopleOverride : homeOverride;
 
           return (
             <group key={character.id}>
@@ -882,7 +897,7 @@ export default function LandingScene3D({
                 selected={selectedModelId === character.id}
                 onSelect={(id) => onSelectModel?.(id)}
                 onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
-                override={override}
+                override={activeOverride}
                 globalCharacterScale={effectiveTuning.characterScale}
                 lineupTarget={lineupTarget}
                 isPeopleMode={isPeopleMode}
