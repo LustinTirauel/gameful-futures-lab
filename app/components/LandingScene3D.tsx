@@ -245,7 +245,13 @@ function DraggableCharacter({
       targetPosition.current.z - groupRef.current.position.z,
     );
 
-    const desiredRotY = inPeopleTransition ? (isRunningNow ? runDirectionY : southFacingY) : override.rotY;
+    const desiredRotY = inPeopleTransition
+      ? !canStartRun
+        ? Math.atan2(lineupTarget.x - groupRef.current.position.x, lineupTarget.z - groupRef.current.position.z)
+        : isRunningNow
+          ? runDirectionY
+          : southFacingY
+      : override.rotY;
     const desiredRotX = inPeopleTransition ? 0 : override.rotX;
     const desiredRotZ = inPeopleTransition ? 0 : override.rotZ;
 
@@ -690,7 +696,7 @@ export default function LandingScene3D({
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPeopleMode, transitionElapsed]);
+  }, [isPeopleMode]);
 
   useEffect(() => {
     let raf = 0;
@@ -707,7 +713,7 @@ export default function LandingScene3D({
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPeopleMode]);
+  }, [isPeopleMode, transitionElapsed]);
 
 
   if (!isWebGLAvailable) {
