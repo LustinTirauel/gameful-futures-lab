@@ -2,6 +2,7 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { Group } from 'three';
 import type { Mesh, PointLight } from 'three';
 import { Plane, Vector3 } from 'three';
@@ -20,6 +21,30 @@ export type ModelOverride = {
   rotZ: number;
 };
 
+export const environmentModelIds = [
+  'pond',
+  'tree-1',
+  'tree-2',
+  'tree-3',
+  'tree-4',
+  'tree-5',
+  'sauna',
+  'logs',
+] as const;
+
+export type EnvironmentModelId = (typeof environmentModelIds)[number];
+
+const defaultEnvironmentOverrides: Record<EnvironmentModelId, ModelOverride> = {
+  pond: { x: -0.3093536754628978, y: -0.42, z: -5.7419247298717035, scale: 1.8, rotX: 0, rotY: 0, rotZ: 0 },
+  'tree-1': { x: 1.0425239028110678, y: -0.45, z: 1.7631247913384325, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+  'tree-2': { x: -3.5846999193099407, y: -0.45, z: -5.139617451584957, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+  'tree-3': { x: 1.8330481574847899, y: -0.45, z: -2.423364785436882, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+  'tree-4': { x: 6.1, y: -0.45, z: -2, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+  'tree-5': { x: -3.556605830775676, y: -0.45, z: -1.1678224883057526, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+  sauna: { x: 2.811093596624368, y: -0.45, z: -7.3274724780907965, scale: 0.98, rotX: 0.02, rotY: -1.07, rotZ: 0 },
+  logs: { x: -3.956337458753273, y: 0, z: 0.6318717588212657, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+};
+
 export type SceneTuning = {
   cameraX: number;
   cameraY: number;
@@ -34,25 +59,26 @@ export type SceneTuning = {
   sceneRadius: number;
   characterOverrides: Record<string, ModelOverride>;
   fireOverride: ModelOverride;
+  environmentOverrides: Record<EnvironmentModelId, ModelOverride>;
 };
 
 export const defaultSceneTuning: SceneTuning = {
   cameraX: 7.5,
   cameraY: 7.2,
   cameraZ: 7.2,
-  fov: 29,
+  fov: 37,
   fogNear: 12,
   fogFar: 31,
   characterScale: 0.78,
-  sceneOffsetX: -8.5,
-  sceneOffsetY: 3,
+  sceneOffsetX: -10,
+  sceneOffsetY: 6,
   sceneCanvasScale: 1.4,
   sceneRadius: 40,
   characterOverrides: {
     alex: {
-      x: -1.95,
-      y: -0.1,
-      z: -2.95,
+      x: -2.4920371576490377,
+      y: -0.15,
+      z: -3.4155691273894115,
       scale: 1,
       rotX: 0.2,
       rotY: 0.52,
@@ -104,6 +130,7 @@ export const defaultSceneTuning: SceneTuning = {
     rotY: 0,
     rotZ: 0,
   },
+  environmentOverrides: defaultEnvironmentOverrides,
 };
 
 type LandingScene3DProps = {
@@ -116,6 +143,7 @@ type LandingScene3DProps = {
   onSelectModel?: (modelId: string) => void;
   onCharacterOverrideChange?: (characterId: string, override: ModelOverride) => void;
   onFireOverrideChange?: (override: ModelOverride) => void;
+  onEnvironmentOverrideChange?: (modelId: EnvironmentModelId, override: ModelOverride) => void;
 };
 
 function CameraController({ tuning }: { tuning: SceneTuning }) {
@@ -367,6 +395,261 @@ function DraggableFire({
   );
 }
 
+function DraggableEnvironmentProp({
+  id,
+  override,
+  selected,
+  editMode,
+  onSelect,
+  onOverrideChange,
+  indicatorHeight,
+  children,
+}: {
+  id: EnvironmentModelId;
+  override: ModelOverride;
+  selected: boolean;
+  editMode: boolean;
+  onSelect: (modelId: string) => void;
+  onOverrideChange: (modelId: EnvironmentModelId, next: ModelOverride) => void;
+  indicatorHeight?: number;
+  children: ReactNode;
+}) {
+  const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
+  const dragPoint = useMemo(() => new Vector3(), []);
+  const targetPosition = useRef({ x: override.x, z: override.z });
+  const dragOffset = useRef({ x: 0, z: 0 });
+  const isDragging = useRef(false);
+
+  useEffect(() => {
+    targetPosition.current = { x: override.x, z: override.z };
+  }, [override.x, override.z]);
+
+  return (
+    <group
+      position={[targetPosition.current.x, override.y, targetPosition.current.z]}
+      rotation={[override.rotX, override.rotY, override.rotZ]}
+      scale={[override.scale, override.scale, override.scale]}
+      onPointerDown={(event) => {
+        if (!editMode) return;
+        event.stopPropagation();
+        onSelect(id);
+        isDragging.current = true;
+        (event.target as { setPointerCapture?: (pointerId: number) => void } | null)?.setPointerCapture?.(
+          event.pointerId,
+        );
+        event.ray.intersectPlane(dragPlane, dragPoint);
+        dragOffset.current = {
+          x: override.x - dragPoint.x,
+          z: override.z - dragPoint.z,
+        };
+      }}
+      onPointerMove={(event) => {
+        if (!editMode || !isDragging.current) return;
+        event.stopPropagation();
+        event.ray.intersectPlane(dragPlane, dragPoint);
+        const next = {
+          ...override,
+          x: Math.max(-80, Math.min(80, dragPoint.x + dragOffset.current.x)),
+          z: Math.max(-80, Math.min(80, dragPoint.z + dragOffset.current.z)),
+        };
+        targetPosition.current = { x: next.x, z: next.z };
+        onOverrideChange(id, next);
+      }}
+      onPointerUp={(event) => {
+        if (!editMode) return;
+        event.stopPropagation();
+        isDragging.current = false;
+        (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(
+          event.pointerId,
+        );
+      }}
+      onPointerCancel={() => {
+        isDragging.current = false;
+      }}
+      onPointerMissed={() => {
+        isDragging.current = false;
+      }}
+      onClick={(event) => {
+        if (!editMode) return;
+        event.stopPropagation();
+        onSelect(id);
+      }}
+    >
+      {children}
+      {selected && editMode && (
+        <mesh position={[0, indicatorHeight ?? 0.8, 0]}>
+          <sphereGeometry args={[0.06, 10, 10]} />
+          <meshBasicMaterial color="#9ec5ff" />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+function EnvironmentProps({
+  editMode,
+  selectedModelId,
+  onSelectModel,
+  overrides,
+  onOverrideChange,
+}: {
+  editMode: boolean;
+  selectedModelId: string | null;
+  onSelectModel: (modelId: string) => void;
+  overrides: Record<EnvironmentModelId, ModelOverride>;
+  onOverrideChange: (modelId: EnvironmentModelId, override: ModelOverride) => void;
+}) {
+  const pondRef = useRef<Mesh>(null);
+  const treeTopRefs = useRef<Array<Group | null>>([]);
+  const smokeRefs = useRef<Array<Mesh | null>>([]);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+
+    if (pondRef.current) {
+      const ripple = 1 + Math.sin(t * 1.8) * 0.035;
+      pondRef.current.scale.set(ripple, 1, ripple * 0.98);
+    }
+
+    treeTopRefs.current.forEach((treeTop, index) => {
+      if (!treeTop) return;
+      treeTop.rotation.z = Math.sin(t * 0.8 + index * 0.85) * 0.045;
+      treeTop.rotation.x = Math.cos(t * 0.55 + index * 0.7) * 0.03;
+    });
+
+    smokeRefs.current.forEach((smoke, index) => {
+      if (!smoke) return;
+      const offset = t * 0.9 + index * 0.55;
+      smoke.position.y = 1.9 + index * 0.23 + (offset % 1.8) * 0.42;
+      smoke.position.x = 0.12 + Math.sin(offset * 1.7) * 0.08;
+      smoke.position.z = 0.1 + Math.cos(offset * 1.35) * 0.08;
+      const puffScale = 1 + ((offset % 1.8) / 1.8) * 0.5;
+      smoke.scale.setScalar(puffScale);
+    });
+  });
+
+  const treeIds: EnvironmentModelId[] = ['tree-1', 'tree-2', 'tree-3', 'tree-4', 'tree-5'];
+  const logPositions: Array<[number, number, number]> = [
+    [2.2, -0.35, 0.2],
+    [2.85, -0.35, 0.45],
+    [2.45, -0.35, 0.85],
+    [3.15, -0.35, 0.95],
+  ];
+
+  return (
+    <>
+      <DraggableEnvironmentProp
+        id="pond"
+        override={overrides.pond}
+        selected={selectedModelId === 'pond'}
+        editMode={editMode}
+        onSelect={onSelectModel}
+        onOverrideChange={onOverrideChange}
+        indicatorHeight={0.2}
+      >
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[1.65, 36]} />
+          <meshStandardMaterial color="#2d6d71" flatShading />
+        </mesh>
+        <mesh ref={pondRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <circleGeometry args={[1.45, 36]} />
+          <meshStandardMaterial color="#70bec8" transparent opacity={0.78} roughness={0.3} />
+        </mesh>
+      </DraggableEnvironmentProp>
+
+      {treeIds.map((treeId, index) => (
+        <DraggableEnvironmentProp
+          key={treeId}
+          id={treeId}
+          override={overrides[treeId]}
+          selected={selectedModelId === treeId}
+          editMode={editMode}
+          onSelect={onSelectModel}
+          onOverrideChange={onOverrideChange}
+          indicatorHeight={2}
+        >
+          <mesh castShadow position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[0.1, 0.14, 1.1, 8]} />
+            <meshStandardMaterial color="#6d4a35" flatShading />
+          </mesh>
+          <group
+            ref={(node) => {
+              treeTopRefs.current[index] = node;
+            }}
+            position={[0, 1.2, 0]}
+          >
+            <mesh castShadow>
+              <coneGeometry args={[0.62, 1.1, 10]} />
+              <meshStandardMaterial color="#4f8d53" flatShading />
+            </mesh>
+            <mesh castShadow position={[0, 0.42, 0]}>
+              <coneGeometry args={[0.45, 0.85, 10]} />
+              <meshStandardMaterial color="#5aa25d" flatShading />
+            </mesh>
+          </group>
+        </DraggableEnvironmentProp>
+      ))}
+
+      <DraggableEnvironmentProp
+        id="sauna"
+        override={overrides.sauna}
+        selected={selectedModelId === 'sauna'}
+        editMode={editMode}
+        onSelect={onSelectModel}
+        onOverrideChange={onOverrideChange}
+        indicatorHeight={2.2}
+      >
+        <mesh castShadow position={[0, 0.4, 0]}>
+          <boxGeometry args={[1.8, 0.8, 1.4]} />
+          <meshStandardMaterial color="#7a5a3f" flatShading />
+        </mesh>
+        <mesh castShadow position={[0, 1, 0]}>
+          <coneGeometry args={[1.25, 0.85, 4]} />
+          <meshStandardMaterial color="#5b3f2e" flatShading />
+        </mesh>
+        <mesh castShadow position={[0.6, 1.65, 0.15]}>
+          <boxGeometry args={[0.24, 0.55, 0.24]} />
+          <meshStandardMaterial color="#4b4e52" flatShading />
+        </mesh>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <mesh
+            key={`smoke-${index}`}
+            ref={(node) => {
+              smokeRefs.current[index] = node;
+            }}
+            position={[0.12, 1.9 + index * 0.23, 0.1]}
+          >
+            <sphereGeometry args={[0.13 + index * 0.015, 10, 10]} />
+            <meshStandardMaterial color="#d2d6dc" transparent opacity={0.35} />
+          </mesh>
+        ))}
+      </DraggableEnvironmentProp>
+
+      <DraggableEnvironmentProp
+        id="logs"
+        override={overrides.logs}
+        selected={selectedModelId === 'logs'}
+        editMode={editMode}
+        onSelect={onSelectModel}
+        onOverrideChange={onOverrideChange}
+        indicatorHeight={0.7}
+      >
+        {logPositions.map((position, index) => (
+          <mesh
+            key={`log-${index}`}
+            castShadow
+            position={[position[0], position[1], position[2]]}
+            rotation={[Math.PI / 2, index % 2 === 0 ? 0.35 : -0.45, 0]}
+          >
+            <cylinderGeometry args={[0.1, 0.1, 0.95, 10]} />
+            <meshStandardMaterial color="#8a6446" flatShading />
+          </mesh>
+        ))}
+      </DraggableEnvironmentProp>
+    </>
+  );
+}
+
 export default function LandingScene3D({
   characters,
   movementBehavior = 'idle',
@@ -377,6 +660,7 @@ export default function LandingScene3D({
   onSelectModel,
   onCharacterOverrideChange,
   onFireOverrideChange,
+  onEnvironmentOverrideChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -431,6 +715,14 @@ export default function LandingScene3D({
           <circleGeometry args={[tuning.sceneRadius, 72]} />
           <meshStandardMaterial color="#2e4a42" flatShading />
         </mesh>
+
+        <EnvironmentProps
+          editMode={editMode}
+          selectedModelId={selectedModelId}
+          onSelectModel={(id) => onSelectModel?.(id)}
+          overrides={tuning.environmentOverrides}
+          onOverrideChange={(id, next) => onEnvironmentOverrideChange?.(id, next)}
+        />
 
         <DraggableFire
           override={tuning.fireOverride}

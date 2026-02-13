@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
+  environmentModelIds,
+  type EnvironmentModelId,
   type ModelOverride,
   type SceneTuning,
 } from './components/LandingScene3D';
@@ -13,8 +15,8 @@ import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
-type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride'>;
+type EditableModelId = string | 'fire' | EnvironmentModelId;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -75,6 +77,10 @@ export default function Home() {
           ...current.fireOverride,
           ...(parsed.fireOverride ?? {}),
         },
+        environmentOverrides: {
+          ...current.environmentOverrides,
+          ...(parsed.environmentOverrides ?? {}),
+        },
       }));
     } catch {
       // Keep defaults when saved JSON is invalid.
@@ -92,7 +98,7 @@ export default function Home() {
   );
 
   const selectedCharacter =
-    selectedModelId && selectedModelId !== 'fire'
+    selectedModelId && selectedModelId !== 'fire' && !environmentModelIds.includes(selectedModelId as EnvironmentModelId)
       ? sceneCharacters.find((character) => character.id === selectedModelId)
       : null;
 
@@ -145,10 +151,17 @@ export default function Home() {
     );
   }
 
+  function buildCompleteEnvironmentOverrides(): Record<EnvironmentModelId, ModelOverride> {
+    return Object.fromEntries(
+      environmentModelIds.map((modelId) => [modelId, getEnvironmentOverride(modelId)]),
+    ) as Record<EnvironmentModelId, ModelOverride>;
+  }
+
   async function handleTuningCopy() {
     const exportPayload: SceneTuning = {
       ...sceneTuning,
       characterOverrides: buildCompleteCharacterOverrides(),
+      environmentOverrides: buildCompleteEnvironmentOverrides(),
     };
     await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
   }
@@ -169,9 +182,16 @@ export default function Home() {
     };
   }
 
+  function getEnvironmentOverride(modelId: EnvironmentModelId): ModelOverride {
+    return sceneTuning.environmentOverrides[modelId] ?? defaultSceneTuning.environmentOverrides[modelId];
+  }
+
   function getSelectedModelOverride(): ModelOverride | null {
     if (!selectedModelId) return null;
     if (selectedModelId === 'fire') return sceneTuning.fireOverride;
+    if (environmentModelIds.includes(selectedModelId as EnvironmentModelId)) {
+      return getEnvironmentOverride(selectedModelId as EnvironmentModelId);
+    }
     return getCharacterOverride(selectedModelId);
   }
 
@@ -192,6 +212,16 @@ export default function Home() {
     }));
   }
 
+  function updateEnvironmentOverride(modelId: EnvironmentModelId, nextOverride: ModelOverride) {
+    setSceneTuning((current) => ({
+      ...current,
+      environmentOverrides: {
+        ...current.environmentOverrides,
+        [modelId]: nextOverride,
+      },
+    }));
+  }
+
   function handleSelectedModelFieldChange(key: keyof ModelOverride, value: number) {
     if (!selectedModelId) return;
 
@@ -201,6 +231,8 @@ export default function Home() {
 
     if (selectedModelId === 'fire') {
       updateFireOverride(next);
+    } else if (environmentModelIds.includes(selectedModelId as EnvironmentModelId)) {
+      updateEnvironmentOverride(selectedModelId as EnvironmentModelId, next);
     } else {
       updateCharacterOverride(selectedModelId, next);
     }
@@ -219,6 +251,7 @@ export default function Home() {
           onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
           onCharacterOverrideChange={updateCharacterOverride}
           onFireOverrideChange={updateFireOverride}
+          onEnvironmentOverrideChange={updateEnvironmentOverride}
         />
       )}
 
