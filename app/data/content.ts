@@ -42,6 +42,7 @@ const isoSceneConfig = {
    * Guardrails for future expansion:
    * - Keep Manhattan distance >= minTileGap between any two members to avoid silhouette overlap.
    * - Keep at most maxMembersPerTileCluster within a 3x3 cluster to prevent density spikes.
+   * - doing some changes
    */
   minTileGap: 1,
   maxMembersPerTileCluster: 3,
