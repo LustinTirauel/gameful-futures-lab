@@ -128,7 +128,7 @@ export const defaultSceneTuning: SceneTuning = {
     fogFar: 31,
     characterScale: 0.78,
     sceneOffsetX: 0,
-    sceneOffsetY: 9.5,
+    sceneOffsetY: 7.5,
     sceneCanvasScale: 1.4,
     sceneRadius: 40,
   },
@@ -763,13 +763,16 @@ export default function LandingScene3D({
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
-  const peopleBg = useMemo(() => new Color('#2a0f24'), []);
+  const peopleBg = useMemo(() => new Color('#300726'), []);
   const homeGround = useMemo(() => new Color('#2e4a42'), []);
-  const peopleGround = useMemo(() => new Color('#341730'), []);
+  const peopleGround = useMemo(() => new Color('#5a1e4a'), []);
+  const homeLight = useMemo(() => new Color('#d4f7dc'), []);
+  const peopleLight = useMemo(() => new Color('#f0b3d7'), []);
 
   const backgroundColor = homeBg.clone().lerp(peopleBg, peopleTransitionProgress).getStyle();
   const fogColor = backgroundColor;
   const groundColor = homeGround.clone().lerp(peopleGround, peopleTransitionProgress).getStyle();
+  const directionalColor = homeLight.clone().lerp(peopleLight, peopleTransitionProgress).getStyle();
   const southFacingY = getScreenSouthYaw(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ, effectiveTuning.fov);
   const decorAlpha = 1 - peopleTransitionProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
@@ -835,7 +838,7 @@ export default function LandingScene3D({
         <color attach="background" args={[backgroundColor]} />
         <fog attach="fog" args={[fogColor, effectiveTuning.fogNear, effectiveTuning.fogFar]} />
         <ambientLight intensity={0.6} />
-        <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
+        <directionalLight position={[2.5, 4, 2.5]} intensity={1} color={directionalColor} castShadow />
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[effectiveTuning.sceneRadius, 72]} />
@@ -869,8 +872,8 @@ export default function LandingScene3D({
           const lineupSlot = getLineupTarget(index, orderedCharacters.length);
           const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
           const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = slotX * 0.34;
-          const ndcY = 0.16 - lineupSlot.row * 0.5;
+          const ndcX = slotX * 0.3;
+          const ndcY = 0.24 - lineupSlot.row * 0.42;
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
