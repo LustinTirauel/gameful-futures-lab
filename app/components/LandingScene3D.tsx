@@ -673,7 +673,7 @@ export default function LandingScene3D({
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const isPeopleMode = mode === 'people';
   const preRunTurnSeconds = 0.9;
-  const runDurationSeconds = 5;
+  const runDurationSeconds = 2;
   const [transitionElapsed, setTransitionElapsed] = useState(0);
   const peopleRunProgress = isPeopleMode
     ? Math.max(0, Math.min(1, (transitionElapsed - preRunTurnSeconds) / runDurationSeconds))
