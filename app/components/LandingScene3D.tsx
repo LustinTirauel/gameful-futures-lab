@@ -3,6 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
+import type { Mesh, PointLight } from 'three';
 import { Plane, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
@@ -223,6 +224,9 @@ function DraggableFire({
   onSelect: (modelId: string) => void;
   onOverrideChange: (next: ModelOverride) => void;
 }) {
+  const flameRef = useRef<Mesh>(null);
+  const lightRef = useRef<PointLight>(null);
+
   const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
   const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
@@ -232,6 +236,20 @@ function DraggableFire({
   useEffect(() => {
     targetPosition.current = { x: override.x, z: override.z };
   }, [override.x, override.z]);
+
+  useFrame(({ clock }) => {
+    const pulse = 0.92 + Math.sin(clock.elapsedTime * 7.3) * 0.08;
+    const sway = Math.sin(clock.elapsedTime * 5.1) * 0.03;
+
+    if (flameRef.current) {
+      flameRef.current.scale.y = pulse;
+      flameRef.current.position.x = sway;
+    }
+
+    if (lightRef.current) {
+      lightRef.current.intensity = 0.42 + Math.sin(clock.elapsedTime * 8.2) * 0.12;
+    }
+  });
 
   return (
     <group
@@ -288,11 +306,11 @@ function DraggableFire({
         <cylinderGeometry args={[0.18, 0.22, 0.12, 6]} />
         <meshStandardMaterial color="#6b4b37" flatShading />
       </mesh>
-      <mesh position={[0, 0.14, 0]} castShadow>
+      <mesh ref={flameRef} position={[0, 0.14, 0]} castShadow>
         <coneGeometry args={[0.13, 0.25, 6]} />
         <meshStandardMaterial color="#fca75f" emissive="#f57f45" emissiveIntensity={0.5} flatShading />
       </mesh>
-      <pointLight position={[0, 0.25, 0]} intensity={0.5} distance={2.4} color="#ffb566" />
+      <pointLight ref={lightRef} position={[0, 0.25, 0]} intensity={0.5} distance={2.4} color="#ffb566" />
       {selected && editMode && (
         <mesh position={[0, 0.45, 0]}>
           <sphereGeometry args={[0.06, 10, 10]} />
