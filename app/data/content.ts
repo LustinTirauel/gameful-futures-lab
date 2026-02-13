@@ -64,6 +64,8 @@ function createScenePlacement(tileX: number, tileY: number): ScenePlacement {
   };
 }
 
+export type CharacterBehavior = 'idle' | 'run';
+
 export type Project = {
   id: string;
   title: string;

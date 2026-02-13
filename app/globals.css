@@ -262,3 +262,15 @@ a { color: inherit; text-decoration: none; }
   padding: 6px 10px;
   cursor: pointer;
 }
+
+
+.character-editor {
+  margin-top: 12px;
+  border-top: 1px solid #34513b;
+  padding-top: 10px;
+}
+
+.character-editor h4 {
+  margin: 0 0 8px;
+  color: #b8e2bf;
+}
