@@ -5,6 +5,8 @@ export type Person = {
   name: string;
   bio: string;
   tags: string[];
+  picture: string;
+  publications: string[];
   behavior: CharacterBehavior;
   tileX: number;
   tileY: number;
@@ -79,6 +81,8 @@ export const people: Person[] = [
     name: 'Alex',
     bio: 'Designs playful foresight methods.',
     tags: ['supervisor', 'qualitative'],
+    picture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=320&q=80',
+    publications: ['Playful Foresight in Civic Labs (2024)', 'Designing Speculative Field Games (2023)'],
     behavior: 'fishing',
     ...createScenePlacement(-2, 1),
   },
@@ -87,6 +91,8 @@ export const people: Person[] = [
     name: 'Bea',
     bio: 'Builds interactive world systems.',
     tags: ['quantitative', 'simulation'],
+    picture: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=320&q=80',
+    publications: ['Agent-Based Play Prototypes (2024)', 'Simulation Literacy Through Play (2022)'],
     behavior: 'snoring',
     ...createScenePlacement(-1, -1),
   },
@@ -95,6 +101,8 @@ export const people: Person[] = [
     name: 'Chen',
     bio: 'Studies game narratives and futures.',
     tags: ['storytelling'],
+    picture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=320&q=80',
+    publications: ['Narrative Futures in Play (2024)', 'Worldbuilding as Research Method (2023)'],
     behavior: 'talking',
     ...createScenePlacement(0, 2),
   },
@@ -103,6 +111,8 @@ export const people: Person[] = [
     name: 'Dina',
     bio: 'Runs lab operations and outreach.',
     tags: ['coordination'],
+    picture: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=320&q=80',
+    publications: ['Community Labs Handbook (2023)', 'Operational Playbooks for Research Teams (2022)'],
     behavior: 'campfire',
     ...createScenePlacement(1, -1),
   },
@@ -111,6 +121,8 @@ export const people: Person[] = [
     name: 'Eli',
     bio: 'Explores playful learning ecosystems.',
     tags: ['supervisor', 'learning'],
+    picture: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=320&q=80',
+    publications: ['Learning Ecologies Through Games (2024)', 'Playful Pedagogies at Scale (2021)'],
     behavior: 'lookAround',
     ...createScenePlacement(2, 1),
   },
