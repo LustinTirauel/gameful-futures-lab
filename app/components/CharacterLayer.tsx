@@ -7,7 +7,7 @@ type Mode = 'home' | 'people' | 'projects';
 type CharacterLayerProps = {
   mode: Mode;
   reactionId: string | null;
-  movementBehavior: 'idle' | 'run';
+  movementBehavior: CharacterBehavior;
   onReact: (personId: string) => void;
   onSelectPerson: (personId: string) => void;
 };
