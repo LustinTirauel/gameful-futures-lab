@@ -197,7 +197,7 @@ function DraggableCharacter({
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode, onArrivalChange]);
+  }, [id, isPeopleMode]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
