@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import type { Mesh, PointLight } from 'three';
-import { Color, Plane, Vector3 } from 'three';
+import { Color, PerspectiveCamera, Plane, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
@@ -637,33 +637,38 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
 }
 
 
-const peopleLayoutById: Record<string, { x: number; z: number }> = {
-  alex: { x: 1.4, z: -4.55 },
-  bea: { x: -0.15, z: -4.05 },
-  chen: { x: -1.55, z: -3.35 },
-  dina: { x: -1.0, z: -2.2 },
-  eli: { x: 0.85, z: -2.85 },
-};
-
-function getLineupTarget(characterId: string, index: number, total: number): { x: number; z: number } {
-  const reference = peopleLayoutById[characterId];
-  if (reference) return reference;
-
+function getLineupTarget(index: number, total: number): { xIndex: number; row: number; itemsInRow: number } {
   const columns = 3;
-  const xSpacing = 2.2;
-  const rowDepthSpacing = 2.2;
-  const baseZ = -4.9;
-
   const row = Math.floor(index / columns);
   const rowStart = row * columns;
   const remaining = Math.max(0, total - rowStart);
   const itemsInRow = Math.min(columns, remaining);
-  const col = index - rowStart;
-  const rowCenter = (itemsInRow - 1) / 2;
+  const xIndex = index - rowStart;
+  return { xIndex, row, itemsInRow };
+}
+
+function projectNdcToGround(
+  ndcX: number,
+  ndcY: number,
+  cameraX: number,
+  cameraY: number,
+  cameraZ: number,
+  fov: number,
+  groundY = -0.1,
+): { x: number; z: number } {
+  const camera = new PerspectiveCamera(fov, 1, 0.1, 1000);
+  camera.position.set(cameraX, cameraY, cameraZ);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+
+  const point = new Vector3(ndcX, ndcY, 0.5).unproject(camera);
+  const direction = point.sub(camera.position).normalize();
+  const distance = (groundY - camera.position.y) / direction.y;
 
   return {
-    x: (col - rowCenter) * xSpacing,
-    z: baseZ + row * rowDepthSpacing,
+    x: camera.position.x + direction.x * distance,
+    z: camera.position.z + direction.z * distance,
   };
 }
 
@@ -835,7 +840,19 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const lineupTarget = getLineupTarget(character.id, index, orderedCharacters.length);
+          const lineupSlot = getLineupTarget(index, orderedCharacters.length);
+          const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
+          const slotX = lineupSlot.xIndex - rowCenter;
+          const ndcX = slotX * 0.34;
+          const ndcY = 0.12 - lineupSlot.row * 0.42;
+          const lineupTarget = projectNdcToGround(
+            ndcX,
+            ndcY,
+            effectiveTuning.cameraX,
+            effectiveTuning.cameraY,
+            effectiveTuning.cameraZ,
+            effectiveTuning.fov,
+          );
 
           return (
             <group key={character.id}>
