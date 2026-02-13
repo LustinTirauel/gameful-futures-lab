@@ -121,21 +121,21 @@ export const defaultSceneTuning: SceneTuning = {
   },
   peopleCharacterOverrides: {
     alex: {
-      x: -2.861751082662215,
+      x: -2.9520258605149046,
       y: -0.15,
-      z: 0.5301005974806365,
+      z: 0.6706447102776663,
       scale: 1,
       rotX: 0,
       rotY: 0.8106029087243866,
       rotZ: 0,
     },
     bea: {
-      x: -1.55,
+      x: -1.2322009641221456,
       y: -0.32,
-      z: -2.05,
+      z: -1.1582955109442352,
       scale: 1,
       rotX: 0,
-      rotY: -0.15,
+      rotY: 0.8106029087243866,
       rotZ: 0,
     },
     chen: {
@@ -179,7 +179,7 @@ export const defaultSceneTuning: SceneTuning = {
     sceneCanvasScale: 1.4,
     sceneRadius: 40,
   },
-  peopleHueColor: '#4a002f',
+  peopleHueColor: '#69526f',
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -920,11 +920,11 @@ export default function LandingScene3D({
           };
 
           const ndcById: Record<string, { x: number; y: number }> = {
-            alex: { x: -0.32, y: 0.18 },
-            bea: { x: 0, y: 0.18 },
-            chen: { x: 0.32, y: 0.18 },
-            dina: { x: -0.12, y: -0.12 },
-            eli: { x: 0.16, y: -0.12 },
+            alex: { x: -0.34, y: 0.19 },
+            bea: { x: 0, y: 0.19 },
+            chen: { x: 0.34, y: 0.19 },
+            dina: { x: -0.15, y: -0.12 },
+            eli: { x: 0.15, y: -0.12 },
           };
           const known = ndcById[character.id];
           const lineupSlot = getLineupTarget(index, orderedCharacters.length);
@@ -956,7 +956,9 @@ export default function LandingScene3D({
             rotZ: 0,
           };
           const lineupTarget = isPeopleMode
-            ? { x: peopleOverride.x, z: peopleOverride.z }
+            ? editMode
+              ? { x: peopleOverride.x, z: peopleOverride.z }
+              : projectedLineupTarget
             : projectedLineupTarget;
           const activeOverride = isPeopleMode && editMode ? peopleOverride : homeOverride;
 
