@@ -50,9 +50,11 @@ function CameraController({ tuning }: { tuning: SceneTuning }) {
 
   useEffect(() => {
     camera.position.set(tuning.cameraX, tuning.cameraY, tuning.cameraZ);
-    camera.fov = tuning.fov;
+    if ('fov' in camera) {
+      camera.fov = tuning.fov;
+      camera.updateProjectionMatrix();
+    }
     camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
   }, [camera, tuning.cameraX, tuning.cameraY, tuning.cameraZ, tuning.fov]);
 
   return null;
