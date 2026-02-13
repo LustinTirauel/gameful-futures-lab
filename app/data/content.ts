@@ -5,12 +5,15 @@ export type Person = {
   name: string;
   bio: string;
   tags: string[];
+  behavior: CharacterBehavior;
   tileX: number;
   tileY: number;
   x: number;
   y: number;
   zIndex: number;
 };
+
+export type CharacterBehavior = 'lookAround' | 'fishing' | 'snoring' | 'talking' | 'campfire';
 
 type ScenePlacement = {
   tileX: number;
@@ -67,6 +70,7 @@ export const people: Person[] = [
     name: 'Alex',
     bio: 'Designs playful foresight methods.',
     tags: ['supervisor', 'qualitative'],
+    behavior: 'fishing',
     ...createScenePlacement(-2, 1),
   },
   {
@@ -74,6 +78,7 @@ export const people: Person[] = [
     name: 'Bea',
     bio: 'Builds interactive world systems.',
     tags: ['quantitative', 'simulation'],
+    behavior: 'snoring',
     ...createScenePlacement(-1, -1),
   },
   {
@@ -81,6 +86,7 @@ export const people: Person[] = [
     name: 'Chen',
     bio: 'Studies game narratives and futures.',
     tags: ['storytelling'],
+    behavior: 'talking',
     ...createScenePlacement(0, 2),
   },
   {
@@ -88,6 +94,7 @@ export const people: Person[] = [
     name: 'Dina',
     bio: 'Runs lab operations and outreach.',
     tags: ['coordination'],
+    behavior: 'campfire',
     ...createScenePlacement(1, -1),
   },
   {
@@ -95,6 +102,7 @@ export const people: Person[] = [
     name: 'Eli',
     bio: 'Explores playful learning ecosystems.',
     tags: ['supervisor', 'learning'],
+    behavior: 'lookAround',
     ...createScenePlacement(2, 1),
   },
 ];
