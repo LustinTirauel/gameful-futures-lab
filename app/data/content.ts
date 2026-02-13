@@ -5,7 +5,53 @@ export type Person = {
   name: string;
   bio: string;
   tags: string[];
+  tileX: number;
+  tileY: number;
+  x: number;
+  y: number;
+  zIndex: number;
 };
+
+type ScenePlacement = {
+  tileX: number;
+  tileY: number;
+  x: number;
+  y: number;
+  zIndex: number;
+};
+
+const isoSceneConfig = {
+  originXPercent: 50,
+  originYPercent: 64,
+  tileWidthPercent: 12,
+  tileHeightPercent: 6.5,
+  depthBase: 10,
+  depthStep: 4,
+  /**
+   * Guardrails for future expansion:
+   * - Keep Manhattan distance >= minTileGap between any two members to avoid silhouette overlap.
+   * - Keep at most maxMembersPerTileCluster within a 3x3 cluster to prevent density spikes.
+   */
+  minTileGap: 1,
+  maxMembersPerTileCluster: 3,
+} as const;
+
+function createScenePlacement(tileX: number, tileY: number): ScenePlacement {
+  const x =
+    isoSceneConfig.originXPercent +
+    (tileX - tileY) * (isoSceneConfig.tileWidthPercent / 2);
+  const y =
+    isoSceneConfig.originYPercent +
+    (tileX + tileY) * (isoSceneConfig.tileHeightPercent / 2);
+
+  return {
+    tileX,
+    tileY,
+    x,
+    y,
+    zIndex: isoSceneConfig.depthBase + (tileX + tileY) * isoSceneConfig.depthStep,
+  };
+}
 
 export type Project = {
   id: string;
@@ -16,17 +62,47 @@ export type Project = {
 };
 
 export const people: Person[] = [
-  { id: 'alex', name: 'Alex', bio: 'Designs playful foresight methods.', tags: ['supervisor', 'qualitative'] },
-  { id: 'bea', name: 'Bea', bio: 'Builds interactive world systems.', tags: ['quantitative', 'simulation'] },
-  { id: 'chen', name: 'Chen', bio: 'Studies game narratives and futures.', tags: ['storytelling'] },
-  { id: 'dina', name: 'Dina', bio: 'Runs lab operations and outreach.', tags: ['coordination'] },
-  { id: 'eli', name: 'Eli', bio: 'Explores playful learning ecosystems.', tags: ['supervisor', 'learning'] },
+  {
+    id: 'alex',
+    name: 'Alex',
+    bio: 'Designs playful foresight methods.',
+    tags: ['supervisor', 'qualitative'],
+    ...createScenePlacement(-2, 1),
+  },
+  {
+    id: 'bea',
+    name: 'Bea',
+    bio: 'Builds interactive world systems.',
+    tags: ['quantitative', 'simulation'],
+    ...createScenePlacement(-1, -1),
+  },
+  {
+    id: 'chen',
+    name: 'Chen',
+    bio: 'Studies game narratives and futures.',
+    tags: ['storytelling'],
+    ...createScenePlacement(0, 2),
+  },
+  {
+    id: 'dina',
+    name: 'Dina',
+    bio: 'Runs lab operations and outreach.',
+    tags: ['coordination'],
+    ...createScenePlacement(1, -1),
+  },
+  {
+    id: 'eli',
+    name: 'Eli',
+    bio: 'Explores playful learning ecosystems.',
+    tags: ['supervisor', 'learning'],
+    ...createScenePlacement(2, 1),
+  },
 ];
 
 export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   alex: validateCharacterConfig({
     pose: 'fishing',
-    position: [-1.65, -0.2, 0.45],
+    position: [-1.95, -0.32, -2.95],
     rotation: [0, 0.45, 0],
     headShape: 'sphere',
     bodyShape: 'cylinder',
@@ -42,7 +118,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   bea: validateCharacterConfig({
     pose: 'sleeping',
-    position: [-0.65, -0.22, 0.7],
+    position: [-1.55, -0.32, -2.05],
     rotation: [0, -0.15, 0],
     headShape: 'box',
     bodyShape: 'box',
@@ -58,7 +134,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   chen: validateCharacterConfig({
     pose: 'chatting',
-    position: [0.35, -0.2, 0.35],
+    position: [-0.85, -0.32, -1.85],
     rotation: [0, -0.25, 0],
     headShape: 'cone',
     bodyShape: 'cone',
@@ -74,7 +150,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   dina: validateCharacterConfig({
     pose: 'campfire-sit',
-    position: [1.2, -0.23, 0.5],
+    position: [-0.2, -0.32, -2.4],
     rotation: [0, -0.8, 0],
     headShape: 'sphere',
     bodyShape: 'box',
@@ -90,7 +166,7 @@ export const characterConfigs: Record<Person['id'], CharacterConfig> = {
   }),
   eli: validateCharacterConfig({
     pose: 'standing',
-    position: [1.95, -0.2, 0.2],
+    position: [-1.05, -0.32, -3.4],
     rotation: [0, -0.3, 0],
     headShape: 'box',
     bodyShape: 'cylinder',

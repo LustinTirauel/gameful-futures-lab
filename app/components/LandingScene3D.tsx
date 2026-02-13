@@ -90,9 +90,9 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
 
   return (
     <div className="scene-layer" aria-hidden="true">
-      <Canvas camera={{ position: [0, 0.8, 4.6], fov: 44 }} shadows>
+      <Canvas camera={{ position: [6.3, 5.2, 6.3], fov: 29 }} shadows>
         <color attach="background" args={['#112126']} />
-        <fog attach="fog" args={['#112126', 4, 10]} />
+        <fog attach="fog" args={['#112126', 7, 16]} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
 
@@ -101,7 +101,7 @@ export default function LandingScene3D({ characters, movementBehavior = 'idle', 
           <meshStandardMaterial color="#2e4a42" flatShading />
         </mesh>
 
-        <group position={[0.7, -0.28, 0.6]}>
+        <group position={[-0.9, -0.36, -2.8]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.18, 0.22, 0.12, 6]} />
             <meshStandardMaterial color="#6b4b37" flatShading />
