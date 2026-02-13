@@ -84,10 +84,16 @@ export default function PrimitiveCharacter({
   const [hovered, setHovered] = useState(false);
 
   const config = poseConfig[pose];
+  const bodyRef = useRef<Group>(null);
+  const headRef = useRef<Group>(null);
+  const fishingRodRef = useRef<Group>(null);
+  const speechBubbleRef = useRef<Group>(null);
+  const pillowRef = useRef<Group>(null);
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (!rootRef.current) return;
 
+    const elapsed = clock.elapsedTime;
     const nextProgress = Math.max(0, reaction.progress - delta * 1.8);
     if (nextProgress !== reaction.progress) {
       setReaction((prev) => ({ ...prev, progress: nextProgress }));
@@ -98,6 +104,32 @@ export default function PrimitiveCharacter({
 
     rootRef.current.position.y = jumpAmount;
     rootRef.current.rotation.z = tiltAmount;
+
+    if (headRef.current) {
+      const lookAround = pose === 'standing' || pose === 'chatting' || pose === 'fishing';
+      headRef.current.rotation.y = lookAround ? Math.sin(elapsed * 0.7) * 0.18 : 0;
+      headRef.current.rotation.x = lookAround ? Math.cos(elapsed * 0.5) * 0.06 : 0;
+    }
+
+    if (bodyRef.current && pose === 'sleeping') {
+      bodyRef.current.position.y = config.bodyOffset[1] + Math.sin(elapsed * 2.2) * 0.018;
+    } else if (bodyRef.current) {
+      bodyRef.current.position.y = config.bodyOffset[1];
+    }
+
+    if (fishingRodRef.current && pose === 'fishing') {
+      fishingRodRef.current.rotation.z = -0.6 + Math.sin(elapsed * 1.6) * 0.17;
+      fishingRodRef.current.rotation.x = Math.cos(elapsed * 1.2) * 0.08;
+    }
+
+    if (speechBubbleRef.current && pose === 'chatting') {
+      speechBubbleRef.current.position.y = 0.76 + Math.sin(elapsed * 3.1) * 0.04;
+      speechBubbleRef.current.rotation.z = Math.sin(elapsed * 3.1) * 0.08;
+    }
+
+    if (pillowRef.current && pose === 'sleeping') {
+      pillowRef.current.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.06);
+    }
   });
 
   const triggerReaction = () => {
@@ -133,7 +165,7 @@ export default function PrimitiveCharacter({
             );
           case 'fishingRod':
             return (
-              <group key="fishingRod" position={[0.26, 0.1, 0]} rotation={[0, 0.2, -0.6]}>
+              <group ref={fishingRodRef} key="fishingRod" position={[0.26, 0.1, 0]} rotation={[0, 0.2, -0.6]}>
                 <mesh castShadow>
                   <boxGeometry args={[0.05, 0.52, 0.05]} />
                   <meshStandardMaterial color={palette.accessory} flatShading />
@@ -146,14 +178,32 @@ export default function PrimitiveCharacter({
             );
           case 'pillow':
             return (
-              <mesh key="pillow" position={[0.25, 0.2, -0.02]} rotation={[0.4, 0.2, 0.2]} castShadow>
-                <boxGeometry args={[0.28, 0.12, 0.24]} />
-                <meshStandardMaterial color={palette.accessory} flatShading />
-              </mesh>
+              <group ref={pillowRef} key="pillow" position={[0.25, 0.2, -0.02]} rotation={[0.4, 0.2, 0.2]}>
+                <mesh castShadow>
+                  <boxGeometry args={[0.28, 0.12, 0.24]} />
+                  <meshStandardMaterial color={palette.accessory} flatShading />
+                </mesh>
+                {pose === 'sleeping' && (
+                  <group position={[0.08, 0.18, 0.02]}>
+                    <mesh position={[0, 0, 0]} castShadow>
+                      <sphereGeometry args={[0.035, 8, 8]} />
+                      <meshStandardMaterial color="#d8f1ff" flatShading />
+                    </mesh>
+                    <mesh position={[0.09, 0.09, 0]} castShadow>
+                      <sphereGeometry args={[0.026, 8, 8]} />
+                      <meshStandardMaterial color="#d8f1ff" flatShading />
+                    </mesh>
+                    <mesh position={[0.16, 0.15, 0]} castShadow>
+                      <sphereGeometry args={[0.018, 8, 8]} />
+                      <meshStandardMaterial color="#d8f1ff" flatShading />
+                    </mesh>
+                  </group>
+                )}
+              </group>
             );
           case 'speechBubble':
             return (
-              <group key="speechBubble" position={[0.26, 0.76, 0]}>
+              <group ref={speechBubbleRef} key="speechBubble" position={[0.26, 0.76, 0]}>
                 <mesh castShadow>
                   <boxGeometry args={[0.28, 0.18, 0.05]} />
                   <meshStandardMaterial color="#f5f5f0" flatShading />
@@ -198,8 +248,8 @@ export default function PrimitiveCharacter({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      <group rotation={config.bodyRotation} position={config.bodyOffset}>
-        <group position={config.headOffset}>
+      <group ref={bodyRef} rotation={config.bodyRotation} position={config.bodyOffset}>
+        <group ref={headRef} position={config.headOffset}>
           {headShape === 'sphere' && (
             <mesh position={[0, 0.52, 0]} castShadow>
               <icosahedronGeometry args={[0.16, 0]} />
