@@ -56,48 +56,48 @@ export const defaultSceneTuning: SceneTuning = {
   runDurationSeconds: 0.5,
   characterOverrides: {
     alex: {
-      x: -3.4478207201773268,
+      x: -2.4920371576490377,
       y: -0.15,
-      z: -2.6638895694034117,
+      z: -3.4155691273894115,
       scale: 1,
       rotX: 0.2,
       rotY: 0.52,
-      rotZ: -0.15,
+      rotZ: 0,
     },
     bea: {
-      x: -1.6446857861483142,
-      y: -0.2,
-      z: -4.348438170194357,
+      x: -2.6581781584628095,
+      y: -0.25,
+      z: -1.6065556425529488,
       scale: 1,
-      rotX: -0.13,
-      rotY: 0.9,
+      rotX: 0,
+      rotY: -0.13,
       rotZ: 0.17,
     },
     chen: {
-      x: -0.3331198570628965,
+      x: 0.11073186200803387,
       y: -0.2,
-      z: -1.5872559018315946,
+      z: -0.07749770444642179,
       scale: 1,
       rotX: 0,
-      rotY: 1.1,
+      rotY: -2.62,
       rotZ: 0,
     },
     dina: {
-      x: 0.26188248449103674,
+      x: -0.057315008065114637,
       y: -0.1,
-      z: -5.83172042054972,
+      z: -1.0442324775568745,
       scale: 0.9,
       rotX: -0.19,
-      rotY: 1.59,
+      rotY: 1,
       rotZ: 0.13,
     },
     eli: {
-      x: 1.4112842463534754,
+      x: 1.6397357610384382,
       y: -0.1,
-      z: -3.0675656648217546,
+      z: -1.281345498231088,
       scale: 0.67,
       rotX: 0.1,
-      rotY: 0.99,
+      rotY: 2.36,
       rotZ: 0.13,
     },
   },
@@ -620,12 +620,22 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
 }
 
 
-function getLineupTarget(index: number, total: number): { x: number; z: number } {
+const peopleLayoutById: Record<string, { x: number; z: number }> = {
+  alex: { x: -3.4478207201773268, z: -2.6638895694034117 },
+  bea: { x: -1.6446857861483142, z: -4.348438170194357 },
+  chen: { x: -0.3331198570628965, z: -1.5872559018315946 },
+  dina: { x: 0.26188248449103674, z: -5.83172042054972 },
+  eli: { x: 1.4112842463534754, z: -3.0675656648217546 },
+};
+
+function getLineupTarget(characterId: string, index: number, total: number): { x: number; z: number } {
+  const reference = peopleLayoutById[characterId];
+  if (reference) return reference;
+
   const columns = 3;
   const xSpacing = 2.2;
   const rowDepthSpacing = 2.2;
   const baseZ = -4.9;
-  const leftShift = -1.4;
 
   const row = Math.floor(index / columns);
   const rowStart = row * columns;
@@ -634,12 +644,9 @@ function getLineupTarget(index: number, total: number): { x: number; z: number }
   const col = index - rowStart;
   const rowCenter = (itemsInRow - 1) / 2;
 
-  const centeredX = (col - rowCenter) * xSpacing;
-  const depthSkew = (col - rowCenter) * 0.65;
-
   return {
-    x: centeredX + leftShift,
-    z: baseZ + row * rowDepthSpacing + depthSkew,
+    x: (col - rowCenter) * xSpacing,
+    z: baseZ + row * rowDepthSpacing,
   };
 }
 
@@ -775,7 +782,7 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const lineupTarget = getLineupTarget(index, orderedCharacters.length);
+          const lineupTarget = getLineupTarget(character.id, index, orderedCharacters.length);
 
           return (
             <group key={character.id}>
