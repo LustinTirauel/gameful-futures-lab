@@ -811,12 +811,13 @@ export default function LandingScene3D({
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
+  const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
   const peopleHueBase = useMemo(() => new Color(tuning.peopleHueColor), [tuning.peopleHueColor]);
-  const peopleBg = useMemo(() => peopleHueBase.clone().multiplyScalar(0.72), [peopleHueBase]);
+  const peopleBg = useMemo(() => neutralPeopleBase.clone().lerp(peopleHueBase, 0.78), [neutralPeopleBase, peopleHueBase]);
   const homeGround = useMemo(() => new Color('#2e4a42'), []);
-  const peopleGround = useMemo(() => peopleHueBase.clone().lerp(new Color('#bb5b95'), 0.33), [peopleHueBase]);
+  const peopleGround = useMemo(() => neutralPeopleBase.clone().lerp(peopleHueBase, 0.92), [neutralPeopleBase, peopleHueBase]);
   const homeLight = useMemo(() => new Color('#d4f7dc'), []);
-  const peopleLight = useMemo(() => peopleHueBase.clone().lerp(new Color('#ffd4f0'), 0.62), [peopleHueBase]);
+  const peopleLight = useMemo(() => neutralPeopleBase.clone().lerp(peopleHueBase, 0.55).lerp(new Color('#ffffff'), 0.2), [neutralPeopleBase, peopleHueBase]);
 
   const backgroundColor = homeBg.clone().lerp(peopleBg, peopleTransitionProgress).getStyle();
   const fogColor = backgroundColor;
@@ -939,11 +940,17 @@ export default function LandingScene3D({
             effectiveTuning.cameraZ,
             effectiveTuning.fov,
           );
-          const peopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+          const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
             x: projectedLineupTarget.x,
             y: homeOverride.y,
             z: projectedLineupTarget.z,
             scale: homeOverride.scale,
+            rotX: 0,
+            rotY: southFacingY,
+            rotZ: 0,
+          };
+          const peopleOverride = {
+            ...rawPeopleOverride,
             rotX: 0,
             rotY: southFacingY,
             rotZ: 0,
