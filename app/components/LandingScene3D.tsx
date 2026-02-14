@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import type { Mesh, PointLight } from 'three';
-import { Plane, Vector3 } from 'three';
+import { Color, PerspectiveCamera, Plane, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
@@ -33,10 +33,30 @@ export type SceneTuning = {
   sceneOffsetY: number;
   sceneCanvasScale: number;
   sceneRadius: number;
+  preRunTurnSeconds: number;
+  runDurationSeconds: number;
   characterOverrides: Record<string, ModelOverride>;
+  peopleCharacterOverrides: Record<string, ModelOverride>;
+  peopleViewTuning: PeopleViewTuning;
+  peopleHueColor: string;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
 };
+
+export type PeopleViewTuning = Pick<
+  SceneTuning,
+  | 'cameraX'
+  | 'cameraY'
+  | 'cameraZ'
+  | 'fov'
+  | 'fogNear'
+  | 'fogFar'
+  | 'characterScale'
+  | 'sceneOffsetX'
+  | 'sceneOffsetY'
+  | 'sceneCanvasScale'
+  | 'sceneRadius'
+>;
 
 export const defaultSceneTuning: SceneTuning = {
   cameraX: 7.5,
@@ -50,6 +70,8 @@ export const defaultSceneTuning: SceneTuning = {
   sceneOffsetY: 6,
   sceneCanvasScale: 1.4,
   sceneRadius: 40,
+  preRunTurnSeconds: 0,
+  runDurationSeconds: 0.5,
   characterOverrides: {
     alex: {
       x: -2.4920371576490377,
@@ -97,6 +119,67 @@ export const defaultSceneTuning: SceneTuning = {
       rotZ: 0.13,
     },
   },
+  peopleCharacterOverrides: {
+    alex: {
+      x: -2.9520258605149046,
+      y: -0.15,
+      z: 0.6706447102776663,
+      scale: 1,
+      rotX: 0,
+      rotY: 0.8106029087243866,
+      rotZ: 0,
+    },
+    bea: {
+      x: -1.2322009641221456,
+      y: -0.32,
+      z: -1.1582955109442352,
+      scale: 1,
+      rotX: 0,
+      rotY: 0.8106029087243866,
+      rotZ: 0,
+    },
+    chen: {
+      x: 0.41819874662061185,
+      y: -0.2,
+      z: -2.942649624067866,
+      scale: 1,
+      rotX: 0,
+      rotY: 0.8106029087243866,
+      rotZ: 0,
+    },
+    dina: {
+      x: -0.8627984955872954,
+      y: -0.1,
+      z: 0.6996398730637239,
+      scale: 0.9,
+      rotX: 0,
+      rotY: 0.8106029087243866,
+      rotZ: 0,
+    },
+    eli: {
+      x: 0.7004637469002306,
+      y: -0.1,
+      z: -0.9602475346833428,
+      scale: 0.67,
+      rotX: 0,
+      rotY: 0.8106029087243866,
+      rotZ: 0,
+    },
+  },
+  peopleViewTuning: {
+    cameraX: 6.1,
+    cameraY: 7.4,
+    cameraZ: 5.8,
+    fov: 39,
+    fogNear: 12,
+    fogFar: 31,
+    characterScale: 0.78,
+    sceneOffsetX: 0,
+    sceneOffsetY: -4.5,
+    sceneCanvasScale: 1.4,
+    sceneRadius: 40,
+  },
+  peopleHueColor: '#69526f',
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -107,16 +190,21 @@ export const defaultSceneTuning: SceneTuning = {
     rotZ: 0,
   },
   environmentOverrides: {
-    pond: { x: -0.3093536754628978, y: -0.42, z: -5.7419247298717035, scale: 1.8, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-1': { x: 1.0425239028110678, y: -0.45, z: 1.7631247913384325, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-2': { x: -3.5846999193099407, y: -0.45, z: -5.139617451584957, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-3': { x: 1.8330481574847899, y: -0.45, z: -2.423364785436882, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-4': { x: 6.1, y: -0.45, z: -2, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-5': { x: -3.556605830775676, y: -0.45, z: -1.1678224883057526, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    sauna: { x: 2.811093596624368, y: -0.45, z: -7.3274724780907965, scale: 0.98, rotX: 0.02, rotY: -1.07, rotZ: 0 },
-    logs: { x: -3.956337458753273, y: 0, z: 0.6318717588212657, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    pond: { x: 2.2507232282160103, y: -0.42, z: -14.795293974973955, scale: 1.8, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-1': { x: 2.9187529742593803, y: -0.45, z: 0.7926207349021812, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-2': { x: -1.2981636467406457, y: -0.45, z: -4.986592289405669, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-3': { x: -1.5133978506037131, y: -0.45, z: -2.1277338327323614, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-4': { x: 2.9374812244316395, y: -0.45, z: -2.2626600657913105, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-5': { x: -7.306100341403911, y: -0.45, z: -0.5310362933233475, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    sauna: { x: 0.2474484173792284, y: -0.45, z: -12.21489968095622, scale: 0.98, rotX: 0.02, rotY: 0.82, rotZ: 0 },
+    logs: { x: -8.010368158127434, y: 0, z: 2.613603014162587, scale: 1, rotX: 0, rotY: 0.79, rotZ: 0 },
   },
 };
+
+
+function lerpNumber(from: number, to: number, progress: number): number {
+  return from + (to - from) * progress;
+}
 
 type LandingScene3DProps = {
   characters: Array<{ id: string; name: string; config: CharacterConfig }>;
@@ -128,21 +216,22 @@ type LandingScene3DProps = {
   selectedModelId?: string | null;
   onSelectModel?: (modelId: string) => void;
   onCharacterOverrideChange?: (characterId: string, override: ModelOverride) => void;
+  onEnvironmentOverrideChange?: (modelId: string, override: ModelOverride) => void;
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
 };
 
-function CameraController({ tuning }: { tuning: SceneTuning }) {
+function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
   const { camera } = useThree();
 
   useEffect(() => {
-    camera.position.set(tuning.cameraX, tuning.cameraY, tuning.cameraZ);
+    camera.position.set(cameraX, cameraY, cameraZ);
     if ('fov' in camera) {
-      camera.fov = tuning.fov;
+      camera.fov = fov;
       camera.updateProjectionMatrix();
     }
     camera.lookAt(0, 0, 0);
-  }, [camera, tuning.cameraX, tuning.cameraY, tuning.cameraZ, tuning.fov]);
+  }, [camera, cameraX, cameraY, cameraZ, fov]);
 
   return null;
 }
@@ -160,6 +249,12 @@ function DraggableCharacter({
   lineupTarget,
   isPeopleMode,
   southFacingY,
+  isPreRunTurning,
+  peopleTransitionProgress,
+  peopleFinalRotX,
+  peopleFinalRotY,
+  peopleFinalRotZ,
+  onArrivalChange,
   onActivate,
 }: {
   id: string;
@@ -174,15 +269,22 @@ function DraggableCharacter({
   lineupTarget: { x: number; z: number };
   isPeopleMode: boolean;
   southFacingY: number;
+  isPreRunTurning: boolean;
+  peopleTransitionProgress: number;
+  peopleFinalRotX: number;
+  peopleFinalRotY: number;
+  peopleFinalRotZ: number;
+  onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
   const groupRef = useRef<Group>(null);
   const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
   const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
+  const peopleStartPosition = useRef({ x: override.x, z: override.z });
   const dragOffset = useRef({ x: 0, z: 0 });
   const isDragging = useRef(false);
-  const peopleModeStartTime = useRef<number | null>(null);
+  const hasArrivedRef = useRef(false);
   const [isRunningInPeople, setIsRunningInPeople] = useState(false);
 
   useEffect(() => {
@@ -190,57 +292,67 @@ function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
-    peopleModeStartTime.current = null;
+    if (editMode) return;
+
+    const currentX = groupRef.current?.position.x ?? override.x;
+    const currentZ = groupRef.current?.position.z ?? override.z;
+    peopleStartPosition.current = { x: currentX, z: currentZ };
+    hasArrivedRef.current = false;
+    onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [isPeopleMode]);
+  }, [id, isPeopleMode, editMode, override.x, override.z]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const inPeopleTransition = isPeopleMode && !editMode;
+    const inPeopleTransition = !editMode && (isPeopleMode || peopleTransitionProgress > 0.001);
 
-    if (inPeopleTransition && peopleModeStartTime.current === null) {
-      peopleModeStartTime.current = clock.elapsedTime;
+    if (inPeopleTransition) {
+      const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
+      const desiredZ = override.z + (lineupTarget.z - override.z) * peopleTransitionProgress;
+
+      groupRef.current.position.x = desiredX;
+      groupRef.current.position.z = desiredZ;
+
+      const hasArrived = isPeopleMode && !isPreRunTurning && peopleTransitionProgress >= 0.999;
+      if (hasArrived !== hasArrivedRef.current) {
+        hasArrivedRef.current = hasArrived;
+        onArrivalChange?.(id, hasArrived);
+      }
+
+      const isRunningNow = !isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
+      if (isRunningNow !== isRunningInPeople) {
+        setIsRunningInPeople(isRunningNow);
+      }
+
+      const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
+      groupRef.current.position.y = override.y + bob;
+
+      const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
+      const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
+      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
+      const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
+      const desiredRotX = isPeopleMode ? peopleFinalRotX : 0;
+      const desiredRotZ = isPeopleMode ? peopleFinalRotZ : 0;
+
+      groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (desiredRotX - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
+    } else {
+      const smooth = isDragging.current ? 0.42 : 0.12;
+      groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
+      groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
+
+      const bob = movementBehavior === 'run' && !editMode
+        ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045
+        : 0;
+      groupRef.current.position.y = override.y + bob;
+
+      groupRef.current.rotation.y += (override.rotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (override.rotX - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (override.rotZ - groupRef.current.rotation.z) * 0.12;
     }
-
-    const transitionElapsed = inPeopleTransition && peopleModeStartTime.current !== null
-      ? clock.elapsedTime - peopleModeStartTime.current
-      : 0;
-    const runDelaySeconds = 0.9;
-    const canStartRun = !inPeopleTransition || transitionElapsed >= runDelaySeconds;
-
-    const desiredX = inPeopleTransition && canStartRun ? lineupTarget.x : override.x;
-    const desiredZ = inPeopleTransition && canStartRun ? lineupTarget.z : override.z;
-
-    targetPosition.current = { x: desiredX, z: desiredZ };
-
-    const smooth = isDragging.current ? 0.42 : 0.12;
-    groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
-    groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
-
-    const distanceToTarget = Math.hypot(desiredX - groupRef.current.position.x, desiredZ - groupRef.current.position.z);
-    const isRunningNow =
-      (inPeopleTransition && canStartRun && distanceToTarget > 0.08) || (movementBehavior === 'run' && !isPeopleMode);
-
-    if (isPeopleMode && !editMode && isRunningNow !== isRunningInPeople) {
-      setIsRunningInPeople(isRunningNow);
-    }
-
-    const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
-    groupRef.current.position.y = override.y + bob;
-
-    const runDirectionY = Math.atan2(
-      targetPosition.current.x - groupRef.current.position.x,
-      targetPosition.current.z - groupRef.current.position.z,
-    );
-
-    const desiredRotY = inPeopleTransition ? (isRunningNow ? runDirectionY : southFacingY) : override.rotY;
-    const desiredRotX = inPeopleTransition ? 0 : override.rotX;
-    const desiredRotZ = inPeopleTransition ? 0 : override.rotZ;
-
-    groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.12;
-    groupRef.current.rotation.x += (desiredRotX - groupRef.current.rotation.x) * 0.12;
-    groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
   });
 
   return (
@@ -328,22 +440,33 @@ function DraggableCharacter({
   );
 }
 
-function NamePlate3D({ name, position }: { name: string; position: [number, number, number] }) {
+function NamePlate3D({
+  name,
+  position,
+  rotationY,
+  opacity,
+}: {
+  name: string;
+  position: [number, number, number];
+  rotationY: number;
+  opacity: number;
+}) {
   return (
-    <group position={position}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <boxGeometry args={[1.8, 0.08, 0.68]} />
-        <meshStandardMaterial color="#d2d5d9" />
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh receiveShadow>
+        <boxGeometry args={[0.74, 0.05, 0.58]} />
+        <meshStandardMaterial color="#d8dbe0" transparent opacity={opacity} />
       </mesh>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <boxGeometry args={[1.62, 0.02, 0.5]} />
-        <meshStandardMaterial color="#eceef0" />
+      <mesh position={[0, 0.03, 0]}>
+        <boxGeometry args={[0.64, 0.016, 0.46]} />
+        <meshStandardMaterial color="#f1f2f4" transparent opacity={opacity} />
       </mesh>
       <Text
-        position={[0, 0.07, 0]}
+        position={[0, 0.039, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.12}
-        color="#2d3136"
+        fontSize={0.1}
+        color="#2f3033"
+        fillOpacity={opacity}
         anchorX="center"
         anchorY="middle"
       >
@@ -465,10 +588,52 @@ function DraggableFire({
   );
 }
 
-function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
+function EnvironmentProps({
+  alpha = 1,
+  overrides,
+  selectedModelId,
+  editMode,
+  onSelect,
+  onOverrideChange,
+}: {
+  alpha?: number;
+  overrides: Record<string, ModelOverride>;
+  selectedModelId: string | null;
+  editMode: boolean;
+  onSelect: (modelId: string) => void;
+  onOverrideChange: (modelId: string, next: ModelOverride) => void;
+}) {
   const pondRef = useRef<Mesh>(null);
   const treeTopRefs = useRef<Array<Group | null>>([]);
   const smokeRefs = useRef<Array<Mesh | null>>([]);
+
+  const dragPoint = useMemo(() => new Vector3(), []);
+  const draggingIdRef = useRef<string | null>(null);
+  const dragOffsetRef = useRef({ x: 0, z: 0 });
+
+  const baselineOverrides = defaultSceneTuning.environmentOverrides;
+
+  const environmentLayout = [
+    { id: 'pond', basePosition: [-3.8, -0.42, 2.35] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'tree-1', basePosition: [-4.8, -0.45, -4.2] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'tree-2', basePosition: [-6, -0.45, -1.5] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'tree-3', basePosition: [4.3, -0.45, -4.8] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'tree-4', basePosition: [6.1, -0.45, -2] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'tree-5', basePosition: [5.2, -0.45, 1.2] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'sauna', basePosition: [3.6, -0.45, -2.3] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+    { id: 'logs', basePosition: [0, 0, 0] as [number, number, number], baseRotation: [0, 0, 0] as [number, number, number], baseScale: 1 },
+  ] as const;
+
+  const resolved = Object.fromEntries(
+    environmentLayout.map((item) => {
+      const baseline = baselineOverrides[item.id];
+      const override = overrides[item.id] ?? baseline;
+      const pos: [number, number, number] = [override.x, override.y, override.z];
+      const rot: [number, number, number] = [override.rotX, override.rotY, override.rotZ];
+      const scale = override.scale;
+      return [item.id, { pos, rot, scale, override }];
+    }),
+  ) as Record<string, { pos: [number, number, number]; rot: [number, number, number]; scale: number; override: ModelOverride }>;
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -487,21 +652,48 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
     smokeRefs.current.forEach((smoke, index) => {
       if (!smoke) return;
       const offset = t * 0.9 + index * 0.55;
-      smoke.position.y = 1.9 + index * 0.23 + (offset % 1.8) * 0.42;
-      smoke.position.x = 3.48 + Math.sin(offset * 1.7) * 0.08;
-      smoke.position.z = -2.2 + Math.cos(offset * 1.35) * 0.08;
+      smoke.position.y = 2.35 + index * 0.23 + (offset % 1.8) * 0.42;
+      smoke.position.x = -0.12 + Math.sin(offset * 1.7) * 0.08;
+      smoke.position.z = 0.1 + Math.cos(offset * 1.35) * 0.08;
       const puffScale = 1 + ((offset % 1.8) / 1.8) * 0.5;
       smoke.scale.setScalar(puffScale);
     });
   });
 
-  const treePositions: Array<[number, number, number]> = [
-    [-4.8, -0.45, -4.2],
-    [-6, -0.45, -1.5],
-    [4.3, -0.45, -4.8],
-    [6.1, -0.45, -2],
-    [5.2, -0.45, 1.2],
-  ];
+  function bindDrag(modelId: string, override: ModelOverride) {
+    const dragPlane = new Plane(new Vector3(0, 1, 0), -override.y);
+
+    return {
+      onPointerDown: (event: { stopPropagation: () => void; pointerId: number; ray: { intersectPlane: (plane: Plane, point: Vector3) => void }; target: unknown }) => {
+        if (!editMode) return;
+        event.stopPropagation();
+        onSelect(modelId);
+        draggingIdRef.current = modelId;
+        (event.target as { setPointerCapture?: (pointerId: number) => void } | null)?.setPointerCapture?.(event.pointerId);
+        event.ray.intersectPlane(dragPlane, dragPoint);
+        dragOffsetRef.current = { x: override.x - dragPoint.x, z: override.z - dragPoint.z };
+      },
+      onPointerMove: (event: { stopPropagation: () => void; ray: { intersectPlane: (plane: Plane, point: Vector3) => void } }) => {
+        if (!editMode || draggingIdRef.current !== modelId) return;
+        event.stopPropagation();
+        event.ray.intersectPlane(dragPlane, dragPoint);
+        onOverrideChange(modelId, {
+          ...override,
+          x: Math.max(-80, Math.min(80, dragPoint.x + dragOffsetRef.current.x)),
+          z: Math.max(-80, Math.min(80, dragPoint.z + dragOffsetRef.current.z)),
+        });
+      },
+      onPointerUp: (event: { stopPropagation: () => void; pointerId: number; target: unknown }) => {
+        if (!editMode || draggingIdRef.current !== modelId) return;
+        event.stopPropagation();
+        draggingIdRef.current = null;
+        (event.target as { releasePointerCapture?: (pointerId: number) => void } | null)?.releasePointerCapture?.(event.pointerId);
+      },
+      onPointerCancel: () => {
+        if (draggingIdRef.current === modelId) draggingIdRef.current = null;
+      },
+    };
+  }
 
   const logPositions: Array<[number, number, number]> = [
     [2.2, -0.35, 0.2],
@@ -512,7 +704,7 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
 
   return (
     <>
-      <group position={[-3.8, -0.42, 2.35]}>
+      <group position={resolved.pond.pos} rotation={resolved.pond.rot} scale={[resolved.pond.scale, resolved.pond.scale, resolved.pond.scale]} {...bindDrag('pond', resolved.pond.override)}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[1.65, 36]} />
           <meshStandardMaterial color="#2d6d71" flatShading transparent opacity={alpha} />
@@ -523,8 +715,8 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
         </mesh>
       </group>
 
-      {treePositions.map((position, index) => (
-        <group key={`tree-${index}`} position={position}>
+      {(['tree-1', 'tree-2', 'tree-3', 'tree-4', 'tree-5'] as const).map((treeId, index) => (
+        <group key={treeId} position={resolved[treeId].pos} rotation={resolved[treeId].rot} scale={[resolved[treeId].scale, resolved[treeId].scale, resolved[treeId].scale]} {...bindDrag(treeId, resolved[treeId].override)}>
           <mesh castShadow position={[0, 0.5, 0]}>
             <cylinderGeometry args={[0.1, 0.14, 1.1, 8]} />
             <meshStandardMaterial color="#6d4a35" flatShading transparent opacity={alpha} />
@@ -544,7 +736,7 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
         </group>
       ))}
 
-      <group position={[3.6, -0.45, -2.3]}>
+      <group position={resolved.sauna.pos} rotation={resolved.sauna.rot} scale={[resolved.sauna.scale, resolved.sauna.scale, resolved.sauna.scale]} {...bindDrag('sauna', resolved.sauna.override)}>
         <mesh castShadow position={[0, 0.4, 0]}>
           <boxGeometry args={[1.8, 0.8, 1.4]} />
           <meshStandardMaterial color="#7a5a3f" flatShading transparent opacity={alpha} />
@@ -563,7 +755,7 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
             ref={(node) => {
               smokeRefs.current[index] = node;
             }}
-            position={[3.48, 1.9 + index * 0.23, -2.2]}
+            position={[-0.12, 2.35 + index * 0.23, 0.1]}
           >
             <sphereGeometry args={[0.13 + index * 0.015, 10, 10]} />
             <meshStandardMaterial color="#d2d6dc" transparent opacity={0.35 * alpha} />
@@ -571,7 +763,7 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
         ))}
       </group>
 
-      <group>
+      <group position={resolved.logs.pos} rotation={resolved.logs.rot} scale={[resolved.logs.scale, resolved.logs.scale, resolved.logs.scale]} {...bindDrag('logs', resolved.logs.override)}>
         {logPositions.map((position, index) => (
           <mesh
             key={`log-${index}`}
@@ -584,26 +776,73 @@ function EnvironmentProps({ alpha = 1 }: { alpha?: number }) {
           </mesh>
         ))}
       </group>
+
+      {editMode && environmentLayout.map((item) => (
+        <mesh
+          key={`${item.id}-handle`}
+          position={resolved[item.id].pos}
+          visible={false}
+          {...bindDrag(item.id, resolved[item.id].override)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(item.id);
+          }}
+        >
+          <sphereGeometry args={[0.9, 12, 12]} />
+          <meshBasicMaterial transparent opacity={0} />
+        </mesh>
+      ))}
+
+      {editMode && selectedModelId && selectedModelId in resolved && (
+        <mesh position={[resolved[selectedModelId].pos[0], resolved[selectedModelId].pos[1] + 1.2, resolved[selectedModelId].pos[2]]}>
+          <sphereGeometry args={[0.08, 12, 12]} />
+          <meshBasicMaterial color="#9de6a4" />
+        </mesh>
+      )}
     </>
   );
 }
 
 
-function getLineupTarget(index: number, total: number): { x: number; z: number } {
+function getLineupTarget(index: number, total: number): { xIndex: number; row: number; itemsInRow: number } {
   const columns = 3;
-  const xSpacing = 2.1;
-  const zSpacing = 1.8;
   const row = Math.floor(index / columns);
   const rowStart = row * columns;
   const remaining = Math.max(0, total - rowStart);
   const itemsInRow = Math.min(columns, remaining);
-  const col = index - rowStart;
-  const rowWidth = (itemsInRow - 1) * xSpacing;
+  const xIndex = index - rowStart;
+  return { xIndex, row, itemsInRow };
+}
+
+function projectNdcToGround(
+  ndcX: number,
+  ndcY: number,
+  cameraX: number,
+  cameraY: number,
+  cameraZ: number,
+  fov: number,
+  groundY = -0.1,
+): { x: number; z: number } {
+  const camera = new PerspectiveCamera(fov, 1, 0.1, 1000);
+  camera.position.set(cameraX, cameraY, cameraZ);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+
+  const point = new Vector3(ndcX, ndcY, 0.5).unproject(camera);
+  const direction = point.sub(camera.position).normalize();
+  const distance = (groundY - camera.position.y) / direction.y;
 
   return {
-    x: col * xSpacing - rowWidth / 2,
-    z: -1.4 + row * zSpacing,
+    x: camera.position.x + direction.x * distance,
+    z: camera.position.z + direction.z * distance,
   };
+}
+
+function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fov: number): number {
+  const center = projectNdcToGround(0, 0.02, cameraX, cameraY, cameraZ, fov);
+  const lower = projectNdcToGround(0, -0.55, cameraX, cameraY, cameraZ, fov);
+  return Math.atan2(lower.x - center.x, lower.z - center.z);
 }
 
 export default function LandingScene3D({
@@ -617,6 +856,7 @@ export default function LandingScene3D({
   onSelectModel,
   onCharacterOverrideChange,
   onFireOverrideChange,
+  onEnvironmentOverrideChange,
   onCharacterActivate,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
@@ -642,29 +882,83 @@ export default function LandingScene3D({
     [characters],
   );
 
-  const canvasScalePercent = tuning.sceneCanvasScale * 100;
-  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const isPeopleMode = mode === 'people';
-  const backgroundColor = isPeopleMode ? '#05070d' : '#112126';
-  const fogColor = isPeopleMode ? '#05070d' : '#112126';
-  const southFacingY = Math.atan2(tuning.cameraX, tuning.cameraZ);
-  const [decorAlpha, setDecorAlpha] = useState(1);
+  const preRunTurnSeconds = tuning.preRunTurnSeconds;
+  const runDurationSeconds = tuning.runDurationSeconds;
+  const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
+  const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
+  const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
+  const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
+
+  const peopleTargetTuning = tuning.peopleViewTuning;
+
+  const effectiveTuning = {
+    cameraX: lerpNumber(tuning.cameraX, peopleTargetTuning.cameraX, peopleTransitionProgress),
+    cameraY: lerpNumber(tuning.cameraY, peopleTargetTuning.cameraY, peopleTransitionProgress),
+    cameraZ: lerpNumber(tuning.cameraZ, peopleTargetTuning.cameraZ, peopleTransitionProgress),
+    fov: lerpNumber(tuning.fov, peopleTargetTuning.fov, peopleTransitionProgress),
+    fogNear: lerpNumber(tuning.fogNear, peopleTargetTuning.fogNear, peopleTransitionProgress),
+    fogFar: lerpNumber(tuning.fogFar, peopleTargetTuning.fogFar, peopleTransitionProgress),
+    characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
+    sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleTargetTuning.sceneOffsetX, peopleTransitionProgress),
+    sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress),
+    sceneCanvasScale: lerpNumber(
+      tuning.sceneCanvasScale,
+      peopleTargetTuning.sceneCanvasScale,
+      peopleTransitionProgress,
+    ),
+    sceneRadius: lerpNumber(tuning.sceneRadius, peopleTargetTuning.sceneRadius, peopleTransitionProgress),
+  };
+  const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
+  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
+
+  const homeBg = useMemo(() => new Color('#112126'), []);
+  const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
+  const peopleHueBase = useMemo(() => new Color(tuning.peopleHueColor), [tuning.peopleHueColor]);
+  const peopleBg = useMemo(() => neutralPeopleBase.clone().lerp(peopleHueBase, 0.78), [neutralPeopleBase, peopleHueBase]);
+  const homeGround = useMemo(() => new Color('#2e4a42'), []);
+  const peopleGround = useMemo(() => neutralPeopleBase.clone().lerp(peopleHueBase, 0.92), [neutralPeopleBase, peopleHueBase]);
+  const homeLight = useMemo(() => new Color('#d4f7dc'), []);
+  const peopleLight = useMemo(() => neutralPeopleBase.clone().lerp(peopleHueBase, 0.55).lerp(new Color('#ffffff'), 0.2), [neutralPeopleBase, peopleHueBase]);
+
+  const backgroundColor = homeBg.clone().lerp(peopleBg, peopleTransitionProgress).getStyle();
+  const fogColor = backgroundColor;
+  const groundColor = homeGround.clone().lerp(peopleGround, peopleTransitionProgress).getStyle();
+  const directionalColor = homeLight.clone().lerp(peopleLight, peopleTransitionProgress).getStyle();
+  const southFacingY = getScreenSouthYaw(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ, effectiveTuning.fov);
+  const decorAlpha = 1 - peopleTransitionProgress;
+  const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
+
 
   useEffect(() => {
+    const target = isPeopleMode ? 1 : 0;
+    const startProgress = peopleTransitionProgress;
+    const delta = target - startProgress;
+
+    if (Math.abs(delta) < 0.0001) {
+      if (!isPeopleMode) setArrivedIds({});
+      return;
+    }
+
+    const start = performance.now();
     let raf = 0;
 
-    const tick = () => {
-      setDecorAlpha((current) => {
-        const targetAlpha = isPeopleMode ? 0 : 1;
-        const next = current + (targetAlpha - current) * 0.018;
-        return Math.abs(next - targetAlpha) < 0.01 ? targetAlpha : next;
-      });
-      raf = window.requestAnimationFrame(tick);
+    const tick = (time: number) => {
+      const elapsed = (time - start) / 1000;
+      const t = Math.max(0, Math.min(1, elapsed / totalTransitionSeconds));
+      const nextProgress = startProgress + delta * t;
+      setPeopleTransitionProgress(nextProgress);
+
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+      } else if (!isPeopleMode) {
+        setArrivedIds({});
+      }
     };
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPeopleMode]);
+  }, [isPeopleMode, totalTransitionSeconds]);
 
 
   if (!isWebGLAvailable) {
@@ -679,23 +973,38 @@ export default function LandingScene3D({
         height: `${canvasScalePercent}%`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
-        transform: `translate(${tuning.sceneOffsetX}%, ${tuning.sceneOffsetY}%)`,
+        transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
       }}
       aria-hidden="true"
     >
-      <Canvas camera={{ position: [tuning.cameraX, tuning.cameraY, tuning.cameraZ], fov: tuning.fov }} shadows>
-        <CameraController tuning={tuning} />
+      <Canvas
+        camera={{ position: [effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ], fov: effectiveTuning.fov }}
+        shadows
+      >
+        <CameraController
+          cameraX={effectiveTuning.cameraX}
+          cameraY={effectiveTuning.cameraY}
+          cameraZ={effectiveTuning.cameraZ}
+          fov={effectiveTuning.fov}
+        />
         <color attach="background" args={[backgroundColor]} />
-        <fog attach="fog" args={[fogColor, tuning.fogNear, tuning.fogFar]} />
+        <fog attach="fog" args={[fogColor, effectiveTuning.fogNear, effectiveTuning.fogFar]} />
         <ambientLight intensity={0.6} />
-        <directionalLight position={[2.5, 4, 2.5]} intensity={1} color="#d4f7dc" castShadow />
+        <directionalLight position={[2.5, 4, 2.5]} intensity={1} color={directionalColor} castShadow />
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[tuning.sceneRadius, 72]} />
-          <meshStandardMaterial color={isPeopleMode ? '#11161f' : '#2e4a42'} flatShading />
+          <circleGeometry args={[effectiveTuning.sceneRadius, 72]} />
+          <meshStandardMaterial color={groundColor} flatShading />
         </mesh>
 
-        {decorAlpha > 0.01 && <EnvironmentProps alpha={decorAlpha} />}
+        {decorAlpha > 0.01 && <EnvironmentProps
+          alpha={decorAlpha}
+          overrides={tuning.environmentOverrides}
+          selectedModelId={selectedModelId}
+          editMode={editMode}
+          onSelect={(id) => onSelectModel?.(id)}
+          onOverrideChange={(id, next) => onEnvironmentOverrideChange?.(id, next)}
+        />}
 
         {decorAlpha > 0.01 && <DraggableFire
           override={tuning.fireOverride}
@@ -709,7 +1018,7 @@ export default function LandingScene3D({
         {orderedCharacters.map((character, index) => {
           const [baseX, baseY, baseZ] = character.config.position;
           const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
-          const override = tuning.characterOverrides[character.id] ?? {
+          const homeOverride = tuning.characterOverrides[character.id] ?? {
             x: baseX,
             y: baseY,
             z: baseZ,
@@ -719,14 +1028,54 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const lineupTarget = getLineupTarget(index, orderedCharacters.length);
+          const ndcById: Record<string, { x: number; y: number }> = {
+            alex: { x: -0.34, y: 0.19 },
+            bea: { x: 0, y: 0.19 },
+            chen: { x: 0.34, y: 0.19 },
+            dina: { x: -0.15, y: -0.12 },
+            eli: { x: 0.15, y: -0.12 },
+          };
+          const known = ndcById[character.id];
+          const lineupSlot = getLineupTarget(index, orderedCharacters.length);
+          const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
+          const slotX = lineupSlot.xIndex - rowCenter;
+          const ndcX = known?.x ?? slotX * 0.3;
+          const ndcY = known?.y ?? 0.24 - lineupSlot.row * 0.42;
+          const projectedLineupTarget = projectNdcToGround(
+            ndcX,
+            ndcY,
+            effectiveTuning.cameraX,
+            effectiveTuning.cameraY,
+            effectiveTuning.cameraZ,
+            effectiveTuning.fov,
+          );
+          const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+            x: projectedLineupTarget.x,
+            y: homeOverride.y,
+            z: projectedLineupTarget.z,
+            scale: homeOverride.scale,
+            rotX: 0,
+            rotY: southFacingY,
+            rotZ: 0,
+          };
+          const peopleOverride = rawPeopleOverride;
+          const lineupTarget = isPeopleMode
+            ? { x: peopleOverride.x, z: peopleOverride.z }
+            : projectedLineupTarget;
+          const activeOverride = isPeopleMode && editMode ? peopleOverride : homeOverride;
 
           return (
             <group key={character.id}>
               {isPeopleMode && (
                 <NamePlate3D
                   name={character.name}
-                  position={[lineupTarget.x, -0.44, lineupTarget.z + 0.8]}
+                  position={[
+                    lineupTarget.x + Math.sin(southFacingY) * 0.56,
+                    -0.42,
+                    lineupTarget.z + Math.cos(southFacingY) * 0.56,
+                  ]}
+                  rotationY={southFacingY}
+                  opacity={arrivedIds[character.id] ? 1 : 0}
                 />
               )}
               <DraggableCharacter
@@ -737,11 +1086,19 @@ export default function LandingScene3D({
                 selected={selectedModelId === character.id}
                 onSelect={(id) => onSelectModel?.(id)}
                 onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
-                override={override}
-                globalCharacterScale={tuning.characterScale}
+                override={activeOverride}
+                globalCharacterScale={effectiveTuning.characterScale}
                 lineupTarget={lineupTarget}
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
+                isPreRunTurning={isPreRunTurning}
+                peopleTransitionProgress={peopleTransitionProgress}
+                peopleFinalRotX={peopleOverride.rotX}
+                peopleFinalRotY={peopleOverride.rotY}
+                peopleFinalRotZ={peopleOverride.rotZ}
+                onArrivalChange={(characterId, arrived) =>
+                  setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
+                }
                 onActivate={onCharacterActivate}
               />
             </group>
