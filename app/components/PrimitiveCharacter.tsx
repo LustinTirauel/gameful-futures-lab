@@ -95,6 +95,7 @@ export default function PrimitiveCharacter({
   const fishingRodRef = useRef<Group>(null);
   const speechBubbleRef = useRef<Group>(null);
   const pillowRef = useRef<Group>(null);
+  const leftArmRef = useRef<Group>(null);
   const rightArmRef = useRef<Group>(null);
   const legRefs = useRef<Array<Group | null>>([]);
 
@@ -102,6 +103,7 @@ export default function PrimitiveCharacter({
     if (!rootRef.current) return;
 
     const elapsed = clock.elapsedTime;
+    const runCycle = Math.sin(elapsed * 10);
     const nextProgress = Math.max(0, reaction.progress - delta * 1.8);
     if (nextProgress !== reaction.progress) {
       setReaction((prev) => ({ ...prev, progress: nextProgress }));
@@ -110,7 +112,8 @@ export default function PrimitiveCharacter({
     const jumpAmount = reaction.kind === 'jump' ? Math.sin(nextProgress * Math.PI) * 0.16 : 0;
     const tiltAmount = reaction.kind === 'tilt' ? Math.sin(nextProgress * Math.PI) * 0.28 : 0;
 
-    rootRef.current.position.y = jumpAmount;
+    const runBob = locomotion === 'run' ? Math.abs(runCycle) * 0.04 : 0;
+    rootRef.current.position.y = jumpAmount + runBob;
     rootRef.current.rotation.z = tiltAmount;
 
     if (headRef.current) {
@@ -123,6 +126,7 @@ export default function PrimitiveCharacter({
       bodyRef.current.position.y = config.bodyOffset[1] + Math.sin(elapsed * 2.2) * 0.018;
     } else if (bodyRef.current) {
       bodyRef.current.position.y = config.bodyOffset[1];
+      bodyRef.current.rotation.x = locomotion === 'run' ? runCycle * 0.08 : 0;
     }
 
     if (fishingRodRef.current && pose === 'fishing') {
@@ -139,13 +143,18 @@ export default function PrimitiveCharacter({
       pillowRef.current.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.06);
     }
 
+    if (leftArmRef.current) {
+      leftArmRef.current.rotation.x = locomotion === 'run' ? -runCycle * 0.9 : 0;
+      leftArmRef.current.rotation.z = locomotion === 'run' ? -0.1 : 0.1;
+    }
+
     if (rightArmRef.current) {
       if (hovered && hoverBehavior === 'wave') {
         rightArmRef.current.rotation.z = -0.5 + Math.sin(elapsed * 7.5) * 0.7;
         rightArmRef.current.rotation.x = 0.15;
       } else {
-        rightArmRef.current.rotation.z = -0.18;
-        rightArmRef.current.rotation.x = 0;
+        rightArmRef.current.rotation.x = locomotion === 'run' ? runCycle * 0.9 : 0;
+        rightArmRef.current.rotation.z = locomotion === 'run' ? -0.1 : -0.18;
       }
     }
 
@@ -320,7 +329,7 @@ export default function PrimitiveCharacter({
         )}
 
 
-        <group position={[-0.23, 0.16, 0]}>
+        <group ref={leftArmRef} position={[-0.23, 0.16, 0]}>
           <mesh castShadow>
             <boxGeometry args={[0.08, 0.3, 0.08]} />
             <meshStandardMaterial color={palette.body} flatShading />
