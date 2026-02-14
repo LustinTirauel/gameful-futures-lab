@@ -26,6 +26,9 @@ type PrimitiveCharacterProps = GroupProps & {
   accessories?: Accessory[];
   colors?: Partial<CharacterColors>;
   pose?: CharacterPose;
+  locomotion?: 'idle' | 'run';
+  hoverBehavior?: 'none' | 'wave';
+  onActivate?: () => void;
 };
 
 const defaultColors: CharacterColors = {
@@ -76,6 +79,9 @@ export default function PrimitiveCharacter({
   accessories = [],
   colors,
   pose = 'standing',
+  locomotion = 'idle',
+  hoverBehavior = 'none',
+  onActivate,
   ...groupProps
 }: PrimitiveCharacterProps) {
   const palette = { ...defaultColors, ...colors };
@@ -89,11 +95,15 @@ export default function PrimitiveCharacter({
   const fishingRodRef = useRef<Group>(null);
   const speechBubbleRef = useRef<Group>(null);
   const pillowRef = useRef<Group>(null);
+  const leftArmRef = useRef<Group>(null);
+  const rightArmRef = useRef<Group>(null);
+  const legRefs = useRef<Array<Group | null>>([]);
 
   useFrame(({ clock }, delta) => {
     if (!rootRef.current) return;
 
     const elapsed = clock.elapsedTime;
+    const runCycle = Math.sin(elapsed * 10);
     const nextProgress = Math.max(0, reaction.progress - delta * 1.8);
     if (nextProgress !== reaction.progress) {
       setReaction((prev) => ({ ...prev, progress: nextProgress }));
@@ -102,7 +112,8 @@ export default function PrimitiveCharacter({
     const jumpAmount = reaction.kind === 'jump' ? Math.sin(nextProgress * Math.PI) * 0.16 : 0;
     const tiltAmount = reaction.kind === 'tilt' ? Math.sin(nextProgress * Math.PI) * 0.28 : 0;
 
-    rootRef.current.position.y = jumpAmount;
+    const runBob = locomotion === 'run' ? Math.abs(runCycle) * 0.04 : 0;
+    rootRef.current.position.y = jumpAmount + runBob;
     rootRef.current.rotation.z = tiltAmount;
 
     if (headRef.current) {
@@ -115,6 +126,7 @@ export default function PrimitiveCharacter({
       bodyRef.current.position.y = config.bodyOffset[1] + Math.sin(elapsed * 2.2) * 0.018;
     } else if (bodyRef.current) {
       bodyRef.current.position.y = config.bodyOffset[1];
+      bodyRef.current.rotation.x = locomotion === 'run' ? runCycle * 0.08 : 0;
     }
 
     if (fishingRodRef.current && pose === 'fishing') {
@@ -130,6 +142,32 @@ export default function PrimitiveCharacter({
     if (pillowRef.current && pose === 'sleeping') {
       pillowRef.current.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.06);
     }
+
+    if (leftArmRef.current) {
+      leftArmRef.current.rotation.x = locomotion === 'run' ? -runCycle * 0.9 : 0;
+      leftArmRef.current.rotation.z = locomotion === 'run' ? -0.1 : 0.1;
+    }
+
+    if (rightArmRef.current) {
+      if (hovered && hoverBehavior === 'wave') {
+        rightArmRef.current.rotation.z = -0.5 + Math.sin(elapsed * 7.5) * 0.7;
+        rightArmRef.current.rotation.x = 0.15;
+      } else {
+        rightArmRef.current.rotation.x = locomotion === 'run' ? runCycle * 0.9 : 0;
+        rightArmRef.current.rotation.z = locomotion === 'run' ? -0.1 : -0.18;
+      }
+    }
+
+    legRefs.current.forEach((leg, index) => {
+      if (!leg) return;
+
+      if (locomotion === 'run') {
+        const phase = index === 0 ? 0 : Math.PI;
+        leg.rotation.x = Math.sin(elapsed * 10 + phase) * 0.5;
+      } else {
+        leg.rotation.x *= 0.82;
+      }
+    });
   });
 
   const triggerReaction = () => {
@@ -241,6 +279,7 @@ export default function PrimitiveCharacter({
       onClick={(event) => {
         event.stopPropagation();
         triggerReaction();
+        onActivate?.();
       }}
       onPointerOver={(event) => {
         event.stopPropagation();
@@ -289,8 +328,24 @@ export default function PrimitiveCharacter({
           </mesh>
         )}
 
-        {[ -config.legSpread / 2, config.legSpread / 2 ].map((x, index) => (
-          <group key={x} position={[x, -0.18, 0.02]}>
+
+        <group ref={leftArmRef} position={[-0.23, 0.16, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.08, 0.3, 0.08]} />
+            <meshStandardMaterial color={palette.body} flatShading />
+          </mesh>
+        </group>
+        <group ref={rightArmRef} position={[0.23, 0.16, 0]} rotation={[0, 0, -0.18]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.08, 0.3, 0.08]} />
+            <meshStandardMaterial color={palette.body} flatShading />
+          </mesh>
+        </group>
+
+        {[-config.legSpread / 2, config.legSpread / 2].map((x, index) => (
+          <group key={x} ref={(node) => {
+              legRefs.current[index] = node;
+            }} position={[x, -0.18, 0.02]}>
             {legShape === 'box' ? (
               <mesh castShadow>
                 <boxGeometry args={[0.12, 0.32, 0.12]} />
