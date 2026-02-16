@@ -341,7 +341,7 @@ function DraggableCharacter({
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode, editMode, relayoutActive, override.x, override.z, lineupTarget.x, lineupTarget.z]);
+  }, [id, isPeopleMode, editMode, relayoutActive, onArrivalChange, override.x, override.z]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
