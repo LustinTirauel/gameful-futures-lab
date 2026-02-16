@@ -10,6 +10,7 @@ import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
 type MovementBehavior = 'idle' | 'run';
+type PeopleLayoutPreset = 'equal-grid' | 'diamond' | 'two-columns' | 'one-column';
 
 export type ModelOverride = {
   x: number;
@@ -44,6 +45,8 @@ export type SceneTuning = {
   peopleCharacterOverrides: Record<string, ModelOverride>;
   peopleViewTuning: PeopleViewTuning;
   peopleHueColor: string;
+  peopleLayoutPreset: PeopleLayoutPreset;
+  peopleLayoutPresetNarrow: PeopleLayoutPreset;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
 };
@@ -200,6 +203,8 @@ export const defaultSceneTuning: SceneTuning = {
     directionalLightZ: 3.5,
   },
   peopleHueColor: '#6c527a',
+  peopleLayoutPreset: 'diamond',
+  peopleLayoutPresetNarrow: 'two-columns',
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -828,14 +833,41 @@ function EnvironmentProps({
 }
 
 
-function getLineupTarget(index: number, total: number): { xIndex: number; row: number; itemsInRow: number } {
-  const columns = 3;
+function getLineupTarget(index: number, total: number, columns = 3): { xIndex: number; row: number; itemsInRow: number } {
   const row = Math.floor(index / columns);
   const rowStart = row * columns;
   const remaining = Math.max(0, total - rowStart);
   const itemsInRow = Math.min(columns, remaining);
   const xIndex = index - rowStart;
   return { xIndex, row, itemsInRow };
+}
+
+function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPreset): { x: number; y: number } {
+  if (preset === 'diamond') {
+    const ndcById = [
+      { x: -0.34, y: 0.19 },
+      { x: 0, y: 0.19 },
+      { x: 0.34, y: 0.19 },
+      { x: -0.15, y: -0.12 },
+      { x: 0.15, y: -0.12 },
+    ];
+    return ndcById[index] ?? { x: 0, y: 0 };
+  }
+
+  if (preset === 'equal-grid') {
+    const slot = getLineupTarget(index, total, 3);
+    const rowCenter = (slot.itemsInRow - 1) / 2;
+    return { x: (slot.xIndex - rowCenter) * 0.3, y: 0.22 - slot.row * 0.38 };
+  }
+
+  if (preset === 'two-columns') {
+    const slot = getLineupTarget(index, total, 2);
+    const rowCenter = (slot.itemsInRow - 1) / 2;
+    return { x: (slot.xIndex - rowCenter) * 0.34, y: 0.24 - slot.row * 0.3 };
+  }
+
+  const slot = getLineupTarget(index, total, 1);
+  return { x: 0, y: 0.26 - slot.row * 0.24 };
 }
 
 function projectNdcToGround(
@@ -906,7 +938,15 @@ export default function LandingScene3D({
     [characters],
   );
 
+  useEffect(() => {
+    const update = () => setIsNarrowViewport(window.innerWidth < 920);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   const isPeopleMode = mode === 'people';
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const preRunTurnSeconds = tuning.preRunTurnSeconds;
   const runDurationSeconds = tuning.runDurationSeconds;
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
@@ -1070,19 +1110,10 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const ndcById: Record<string, { x: number; y: number }> = {
-            alex: { x: -0.34, y: 0.19 },
-            bea: { x: 0, y: 0.19 },
-            chen: { x: 0.34, y: 0.19 },
-            dina: { x: -0.15, y: -0.12 },
-            eli: { x: 0.15, y: -0.12 },
-          };
-          const known = ndcById[character.id];
-          const lineupSlot = getLineupTarget(index, orderedCharacters.length);
-          const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
-          const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = known?.x ?? slotX * 0.3;
-          const ndcY = known?.y ?? 0.24 - lineupSlot.row * 0.42;
+          const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
+          const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset);
+          const ndcX = layoutNdc.x;
+          const ndcY = layoutNdc.y;
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
@@ -1102,7 +1133,9 @@ export default function LandingScene3D({
           };
           const peopleOverride = rawPeopleOverride;
           const lineupTarget = isPeopleMode
-            ? { x: peopleOverride.x, z: peopleOverride.z }
+            ? editMode
+              ? { x: peopleOverride.x, z: peopleOverride.z }
+              : projectedLineupTarget
             : projectedLineupTarget;
           const activeOverride = isPeopleMode && editMode ? peopleOverride : homeOverride;
 

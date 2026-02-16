@@ -14,8 +14,9 @@ import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
+type PeopleLayoutPreset = 'equal-grid' | 'diamond' | 'two-columns' | 'one-column';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'fireOverride' | 'environmentOverrides'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'peopleLayoutPreset' | 'peopleLayoutPresetNarrow' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -64,6 +65,14 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
   'directionalLightX',
   'directionalLightY',
   'directionalLightZ',
+];
+
+
+const peopleLayoutOptions: Array<{ value: PeopleLayoutPreset; label: string }> = [
+  { value: 'equal-grid', label: 'Equal rows and columns' },
+  { value: 'diamond', label: 'Diamond' },
+  { value: 'two-columns', label: 'Two columns' },
+  { value: 'one-column', label: 'One column' },
 ];
 
 
@@ -189,6 +198,10 @@ export default function Home() {
 
   function handlePeopleHueColorChange(value: string) {
     setSceneTuning((current) => ({ ...current, peopleHueColor: value }));
+  }
+
+  function handlePeopleLayoutPresetChange(key: 'peopleLayoutPreset' | 'peopleLayoutPresetNarrow', value: PeopleLayoutPreset) {
+    setSceneTuning((current) => ({ ...current, [key]: value }));
   }
 
   function handleTuningReset() {
@@ -359,14 +372,48 @@ export default function Home() {
               <p>Drag models in X/Z, then fine tune with sliders. Values auto-save.</p>
 
               {mode === 'people' && (
-                <label>
-                  <span>People hue color</span>
-                  <input
-                    type="color"
-                    value={sceneTuning.peopleHueColor}
-                    onChange={(event) => handlePeopleHueColorChange(event.target.value)}
-                  />
-                </label>
+                <>
+                  <label>
+                    <span>People hue color</span>
+                    <input
+                      type="color"
+                      value={sceneTuning.peopleHueColor}
+                      onChange={(event) => handlePeopleHueColorChange(event.target.value)}
+                    />
+                  </label>
+
+                  <label>
+                    <span>People layout (desktop/wide)</span>
+                    <select
+                      value={sceneTuning.peopleLayoutPreset}
+                      onChange={(event) =>
+                        handlePeopleLayoutPresetChange('peopleLayoutPreset', event.target.value as PeopleLayoutPreset)
+                      }
+                    >
+                      {peopleLayoutOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>People layout (mobile/narrow)</span>
+                    <select
+                      value={sceneTuning.peopleLayoutPresetNarrow}
+                      onChange={(event) =>
+                        handlePeopleLayoutPresetChange('peopleLayoutPresetNarrow', event.target.value as PeopleLayoutPreset)
+                      }
+                    >
+                      {peopleLayoutOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
               )}
 
 
