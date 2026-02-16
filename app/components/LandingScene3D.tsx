@@ -1054,8 +1054,23 @@ export default function LandingScene3D({
 
 
 
+
+  const previousLayoutKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const layoutKey = `${activeLayoutPreset}:${activeLayoutColumns}`;
+
     if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      previousLayoutKeyRef.current = layoutKey;
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const previousLayoutKey = previousLayoutKeyRef.current;
+    previousLayoutKeyRef.current = layoutKey;
+
+    // Do not rerun when entering People mode; only rerun when layout settings change while already in People.
+    if (previousLayoutKey === null || peopleTransitionProgress < 0.999 || previousLayoutKey === layoutKey) {
       setRelayoutProgress(1);
       return;
     }
@@ -1075,7 +1090,7 @@ export default function LandingScene3D({
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, tuning.runDurationSeconds]);
+  }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
 
   if (!isWebGLAvailable) {
     return null;
@@ -1176,7 +1191,17 @@ export default function LandingScene3D({
               ? { x: peopleOverride.x, z: peopleOverride.z }
               : projectedLineupTarget
             : projectedLineupTarget;
-          const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
+          const peopleLineupOverride = {
+            ...homeOverride,
+            x: lineupTarget.x,
+            y: peopleOverride.y,
+            z: lineupTarget.z,
+            scale: peopleOverride.scale,
+            rotX: peopleOverride.rotX,
+            rotY: peopleOverride.rotY,
+            rotZ: peopleOverride.rotZ,
+          };
+          const activeOverride = isPeopleMode ? (useCustomLayout ? peopleOverride : peopleLineupOverride) : homeOverride;
 
           return (
             <group key={character.id}>
