@@ -287,6 +287,7 @@ function DraggableCharacter({
   peopleFinalScale,
   relayoutProgress,
   relayoutActive,
+  useCustomLayout,
   onArrivalChange,
   onActivate,
 }: {
@@ -311,6 +312,7 @@ function DraggableCharacter({
   peopleFinalScale: number;
   relayoutProgress: number;
   relayoutActive: boolean;
+  useCustomLayout: boolean;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -388,8 +390,9 @@ function DraggableCharacter({
       groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
     } else {
       const smooth = isDragging.current ? 0.42 : 0.12;
-      const idleTargetX = !editMode && isPeopleMode ? lineupTarget.x : targetPosition.current.x;
-      const idleTargetZ = !editMode && isPeopleMode ? lineupTarget.z : targetPosition.current.z;
+      const lockToLineup = isPeopleMode && !useCustomLayout;
+      const idleTargetX = lockToLineup ? lineupTarget.x : targetPosition.current.x;
+      const idleTargetZ = lockToLineup ? lineupTarget.z : targetPosition.current.z;
       groupRef.current.position.x += (idleTargetX - groupRef.current.position.x) * smooth;
       groupRef.current.position.z += (idleTargetZ - groupRef.current.position.z) * smooth;
 
@@ -1197,17 +1200,7 @@ export default function LandingScene3D({
               ? { x: peopleOverride.x, z: peopleOverride.z }
               : projectedLineupTarget
             : projectedLineupTarget;
-          const peopleLineupOverride = {
-            ...homeOverride,
-            x: lineupTarget.x,
-            y: peopleOverride.y,
-            z: lineupTarget.z,
-            scale: peopleOverride.scale,
-            rotX: peopleOverride.rotX,
-            rotY: peopleOverride.rotY,
-            rotZ: peopleOverride.rotZ,
-          };
-          const activeOverride = isPeopleMode ? (useCustomLayout ? peopleOverride : peopleLineupOverride) : homeOverride;
+          const activeOverride = isPeopleMode ? (useCustomLayout ? peopleOverride : homeOverride) : homeOverride;
 
           return (
             <group key={character.id}>
@@ -1245,6 +1238,7 @@ export default function LandingScene3D({
                 peopleFinalScale={peopleOverride.scale}
                 relayoutProgress={relayoutProgress}
                 relayoutActive={isPeopleMode && activeLayoutPreset !== 'custom' && relayoutProgress < 0.999}
+                useCustomLayout={useCustomLayout}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
