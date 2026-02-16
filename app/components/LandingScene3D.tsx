@@ -91,7 +91,7 @@ export const defaultSceneTuning: SceneTuning = {
   directionalLightY: 20,
   directionalLightZ: 11.8,
   preRunTurnSeconds: 0,
-  runDurationSeconds: 0.5,
+  runDurationSeconds: 0.9,
   characterOverrides: {
     alex: {
       x: -3.1122954462698234,
@@ -287,6 +287,7 @@ function DraggableCharacter({
   peopleFinalScale,
   relayoutProgress,
   relayoutActive,
+  isTransitioningVisual,
   useCustomLayout,
   onArrivalChange,
   onActivate,
@@ -312,6 +313,7 @@ function DraggableCharacter({
   peopleFinalScale: number;
   relayoutProgress: number;
   relayoutActive: boolean;
+  isTransitioningVisual: boolean;
   useCustomLayout: boolean;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
@@ -467,7 +469,7 @@ function DraggableCharacter({
     >
       <PrimitiveCharacter
         pose={isPeopleMode ? 'standing' : config.pose}
-        locomotion={isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
+        locomotion={isTransitioningVisual ? 'run' : isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
@@ -1238,6 +1240,7 @@ export default function LandingScene3D({
                 peopleFinalScale={peopleOverride.scale}
                 relayoutProgress={relayoutProgress}
                 relayoutActive={isPeopleMode && activeLayoutPreset !== 'custom' && relayoutProgress < 0.999}
+                isTransitioningVisual={relayoutProgress < 0.999 || (peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999)}
                 useCustomLayout={useCustomLayout}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
