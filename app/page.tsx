@@ -14,8 +14,9 @@ import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
+type PeopleLayoutPreset = 'regular' | 'custom';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'fireOverride' | 'environmentOverrides'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'peopleLayoutPreset' | 'peopleLayoutPresetNarrow' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -67,6 +68,12 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
 ];
 
 
+const peopleLayoutOptions: Array<{ value: PeopleLayoutPreset; label: string }> = [
+  { value: 'regular', label: 'Regular' },
+  { value: 'custom', label: 'Custom (manual)' },
+];
+
+
 const environmentModelIds = ['pond', 'tree-1', 'tree-2', 'tree-3', 'tree-4', 'tree-5', 'sauna', 'logs'] as const;
 
 const modelFields: Array<{ key: keyof ModelOverride; min: number; max: number; step: number }> = [
@@ -88,6 +95,7 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -128,6 +136,13 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
   }, [sceneTuning]);
+
+  useEffect(() => {
+    const update = () => setIsNarrowViewport(window.innerWidth < 920);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const sceneCharacters = useMemo(
@@ -189,6 +204,15 @@ export default function Home() {
 
   function handlePeopleHueColorChange(value: string) {
     setSceneTuning((current) => ({ ...current, peopleHueColor: value }));
+  }
+
+  function handlePeopleLayoutPresetChange(key: 'peopleLayoutPreset' | 'peopleLayoutPresetNarrow', value: PeopleLayoutPreset) {
+    setSceneTuning((current) => ({ ...current, [key]: value }));
+  }
+
+  function handlePeopleLayoutColumnsChange(key: 'peopleLayoutColumns' | 'peopleLayoutColumnsNarrow', value: number) {
+    const next = Math.max(1, Math.min(6, Math.round(value)));
+    setSceneTuning((current) => ({ ...current, [key]: next }));
   }
 
   function handleTuningReset() {
@@ -319,8 +343,14 @@ export default function Home() {
     }
   }
 
+  const activePeoplePreset = isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset;
+  const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
+  const activePeopleRows = activePeoplePreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / activePeopleColumns);
+  const peopleNeedsScroll = mode === 'people' && activePeoplePreset !== 'custom' && activePeopleRows > 2;
+  const peopleScrollSpacerVh = peopleNeedsScroll ? Math.min(260, 70 + (activePeopleRows - 2) * 44) : 0;
+
   return (
-    <main className="main">
+    <main className={`main ${mode === 'people' ? (peopleNeedsScroll ? 'main-people main-people-scroll' : 'main-people') : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
@@ -359,14 +389,80 @@ export default function Home() {
               <p>Drag models in X/Z, then fine tune with sliders. Values auto-save.</p>
 
               {mode === 'people' && (
-                <label>
-                  <span>People hue color</span>
-                  <input
-                    type="color"
-                    value={sceneTuning.peopleHueColor}
-                    onChange={(event) => handlePeopleHueColorChange(event.target.value)}
-                  />
-                </label>
+                <>
+                  <label>
+                    <span>People hue color</span>
+                    <input
+                      type="color"
+                      value={sceneTuning.peopleHueColor}
+                      onChange={(event) => handlePeopleHueColorChange(event.target.value)}
+                    />
+                  </label>
+
+                  <label>
+                    <span>People layout (desktop/wide)</span>
+                    <select
+                      value={sceneTuning.peopleLayoutPreset}
+                      onChange={(event) =>
+                        handlePeopleLayoutPresetChange('peopleLayoutPreset', event.target.value as PeopleLayoutPreset)
+                      }
+                    >
+                      {peopleLayoutOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {sceneTuning.peopleLayoutPreset !== 'custom' && (
+                    <label>
+                      <span>People columns (desktop/wide)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={6}
+                        step={1}
+                        value={sceneTuning.peopleLayoutColumns}
+                        onChange={(event) =>
+                          handlePeopleLayoutColumnsChange('peopleLayoutColumns', Number(event.target.value))
+                        }
+                      />
+                    </label>
+                  )}
+
+                  <label>
+                    <span>People layout (mobile/narrow)</span>
+                    <select
+                      value={sceneTuning.peopleLayoutPresetNarrow}
+                      onChange={(event) =>
+                        handlePeopleLayoutPresetChange('peopleLayoutPresetNarrow', event.target.value as PeopleLayoutPreset)
+                      }
+                    >
+                      {peopleLayoutOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {sceneTuning.peopleLayoutPresetNarrow !== 'custom' && (
+                    <label>
+                      <span>People columns (mobile/narrow)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={6}
+                        step={1}
+                        value={sceneTuning.peopleLayoutColumnsNarrow}
+                        onChange={(event) =>
+                          handlePeopleLayoutColumnsChange('peopleLayoutColumnsNarrow', Number(event.target.value))
+                        }
+                      />
+                    </label>
+                  )}
+                </>
               )}
 
 
@@ -455,6 +551,8 @@ export default function Home() {
           <li>People tag filters with "run away" behavior</li>
         </ul>
       </section>
+
+      {peopleNeedsScroll && <div style={{ height: `${peopleScrollSpacerVh}vh` }} aria-hidden="true" />}
 
       <div className="vignette" />
     </main>

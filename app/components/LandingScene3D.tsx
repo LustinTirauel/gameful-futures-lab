@@ -10,6 +10,7 @@ import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
 type MovementBehavior = 'idle' | 'run';
+type PeopleLayoutPreset = 'regular' | 'custom';
 
 export type ModelOverride = {
   x: number;
@@ -44,6 +45,10 @@ export type SceneTuning = {
   peopleCharacterOverrides: Record<string, ModelOverride>;
   peopleViewTuning: PeopleViewTuning;
   peopleHueColor: string;
+  peopleLayoutPreset: PeopleLayoutPreset;
+  peopleLayoutPresetNarrow: PeopleLayoutPreset;
+  peopleLayoutColumns: number;
+  peopleLayoutColumnsNarrow: number;
   fireOverride: ModelOverride;
   environmentOverrides: Record<string, ModelOverride>;
 };
@@ -80,13 +85,13 @@ export const defaultSceneTuning: SceneTuning = {
   sceneOffsetY: 6,
   sceneCanvasScale: 1.4,
   sceneRadius: 40,
-  ambientLightIntensity: 0.6,
-  directionalLightIntensity: 1,
-  directionalLightX: 2.5,
-  directionalLightY: 4,
-  directionalLightZ: 2.5,
+  ambientLightIntensity: 1.45,
+  directionalLightIntensity: 0.8,
+  directionalLightX: -0.1,
+  directionalLightY: 20,
+  directionalLightZ: 11.8,
   preRunTurnSeconds: 0,
-  runDurationSeconds: 0.5,
+  runDurationSeconds: 0.9,
   characterOverrides: {
     alex: {
       x: -3.1122954462698234,
@@ -140,13 +145,13 @@ export const defaultSceneTuning: SceneTuning = {
       y: -0.15,
       z: 0.6706447102776663,
       scale: 1,
-      rotX: 0,
-      rotY: 0.8106029087243866,
+      rotX: 0.03,
+      rotY: 0.51,
       rotZ: 0,
     },
     bea: {
       x: -1.2322009641221456,
-      y: -0.32,
+      y: -0.15,
       z: -1.1582955109442352,
       scale: 1,
       rotX: 0,
@@ -155,7 +160,7 @@ export const defaultSceneTuning: SceneTuning = {
     },
     chen: {
       x: 0.41819874662061185,
-      y: -0.2,
+      y: -0.15,
       z: -2.942649624067866,
       scale: 1,
       rotX: 0,
@@ -164,7 +169,7 @@ export const defaultSceneTuning: SceneTuning = {
     },
     dina: {
       x: -0.8627984955872954,
-      y: -0.1,
+      y: -0.15,
       z: 0.6996398730637239,
       scale: 0.9,
       rotX: 0,
@@ -173,7 +178,7 @@ export const defaultSceneTuning: SceneTuning = {
     },
     eli: {
       x: 0.7004637469002306,
-      y: -0.1,
+      y: -0.25,
       z: -0.9602475346833428,
       scale: 0.67,
       rotX: 0,
@@ -193,13 +198,17 @@ export const defaultSceneTuning: SceneTuning = {
     sceneOffsetY: -4.5,
     sceneCanvasScale: 1.4,
     sceneRadius: 40,
-    ambientLightIntensity: 0.6,
-    directionalLightIntensity: 1,
-    directionalLightX: 2.5,
-    directionalLightY: 4,
-    directionalLightZ: 2.5,
+    ambientLightIntensity: 1.55,
+    directionalLightIntensity: 3,
+    directionalLightX: 2.6,
+    directionalLightY: 7.7,
+    directionalLightZ: 3.5,
   },
-  peopleHueColor: '#69526f',
+  peopleHueColor: '#6c527a',
+  peopleLayoutPreset: 'regular',
+  peopleLayoutPresetNarrow: 'regular',
+  peopleLayoutColumns: 3,
+  peopleLayoutColumnsNarrow: 2,
   fireOverride: {
     x: -0.000407912779931463,
     y: -0.3,
@@ -212,7 +221,7 @@ export const defaultSceneTuning: SceneTuning = {
   environmentOverrides: {
     pond: { x: -0.17114555377747376, y: -0.42, z: -7.562215471467024, scale: 3, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-1': { x: -6.487830093617572, y: -0.45, z: -0.16194185467417022, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-2': { x: -3.81150117331989, y: -0.45, z: -3.713695896904907, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-2': { x: -4.013044993582884, y: -0.45, z: -4.121256646007296, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-3': { x: 0.9703599180581204, y: -0.45, z: 2.066643086549372, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-4': { x: 1.3835422089303613, y: -0.45, z: -2.238627927351077, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-5': { x: -4.265002239085487, y: -0.45, z: -1.0353432942222807, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
@@ -276,6 +285,10 @@ function DraggableCharacter({
   peopleFinalRotZ,
   peopleFinalY,
   peopleFinalScale,
+  relayoutProgress,
+  relayoutActive,
+  isTransitioningVisual,
+  useCustomLayout,
   onArrivalChange,
   onActivate,
 }: {
@@ -298,6 +311,10 @@ function DraggableCharacter({
   peopleFinalRotZ: number;
   peopleFinalY: number;
   peopleFinalScale: number;
+  relayoutProgress: number;
+  relayoutActive: boolean;
+  isTransitioningVisual: boolean;
+  useCustomLayout: boolean;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -316,7 +333,7 @@ function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
-    if (editMode) return;
+    if (editMode && !relayoutActive) return;
 
     const currentX = groupRef.current?.position.x ?? override.x;
     const currentZ = groupRef.current?.position.z ?? override.z;
@@ -324,27 +341,36 @@ function DraggableCharacter({
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode, editMode, override.x, override.z]);
+  }, [id, isPeopleMode, editMode, relayoutActive, onArrivalChange, override.x, override.z]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const inPeopleTransition = !editMode && (isPeopleMode || peopleTransitionProgress > 0.001);
+    const inPeopleTransition = relayoutActive || (!editMode && (isPeopleMode || peopleTransitionProgress > 0.001));
 
     if (inPeopleTransition) {
-      const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
-      const desiredZ = override.z + (lineupTarget.z - override.z) * peopleTransitionProgress;
+      const transitionProgress = relayoutActive
+        ? relayoutProgress
+        : isPeopleMode
+          ? peopleTransitionProgress
+          : 1 - peopleTransitionProgress;
+      const startX = peopleStartPosition.current.x;
+      const startZ = peopleStartPosition.current.z;
+      const targetX = isPeopleMode || relayoutActive ? lineupTarget.x : override.x;
+      const targetZ = isPeopleMode || relayoutActive ? lineupTarget.z : override.z;
+      const desiredX = startX + (targetX - startX) * transitionProgress;
+      const desiredZ = startZ + (targetZ - startZ) * transitionProgress;
 
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const hasArrived = isPeopleMode && !isPreRunTurning && peopleTransitionProgress >= 0.999;
+      const hasArrived = isPeopleMode && !isPreRunTurning && !relayoutActive && transitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = !isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
+      const isRunningNow = relayoutActive || (!isPreRunTurning && transitionProgress > 0.001 && transitionProgress < 0.999);
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -353,9 +379,9 @@ function DraggableCharacter({
       const baseY = isPeopleMode ? peopleFinalY : override.y;
       groupRef.current.position.y = baseY + bob;
 
-      const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
-      const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
-      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const runTargetX = targetX;
+      const runTargetZ = targetZ;
+      const preTurnY = Math.atan2(targetX - desiredX, targetZ - desiredZ);
       const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
       const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
       const desiredRotX = isPeopleMode ? peopleFinalRotX : 0;
@@ -366,8 +392,11 @@ function DraggableCharacter({
       groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
     } else {
       const smooth = isDragging.current ? 0.42 : 0.12;
-      groupRef.current.position.x += (targetPosition.current.x - groupRef.current.position.x) * smooth;
-      groupRef.current.position.z += (targetPosition.current.z - groupRef.current.position.z) * smooth;
+      const lockToLineup = isPeopleMode && !useCustomLayout;
+      const idleTargetX = lockToLineup ? lineupTarget.x : targetPosition.current.x;
+      const idleTargetZ = lockToLineup ? lineupTarget.z : targetPosition.current.z;
+      groupRef.current.position.x += (idleTargetX - groupRef.current.position.x) * smooth;
+      groupRef.current.position.z += (idleTargetZ - groupRef.current.position.z) * smooth;
 
       const bob = movementBehavior === 'run' && !editMode
         ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045
@@ -440,7 +469,7 @@ function DraggableCharacter({
     >
       <PrimitiveCharacter
         pose={isPeopleMode ? 'standing' : config.pose}
-        locomotion={isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
+        locomotion={isTransitioningVisual ? 'run' : isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
@@ -828,8 +857,7 @@ function EnvironmentProps({
 }
 
 
-function getLineupTarget(index: number, total: number): { xIndex: number; row: number; itemsInRow: number } {
-  const columns = 3;
+function getLineupTarget(index: number, total: number, columns = 3): { xIndex: number; row: number; itemsInRow: number } {
   const row = Math.floor(index / columns);
   const rowStart = row * columns;
   const remaining = Math.max(0, total - rowStart);
@@ -837,6 +865,24 @@ function getLineupTarget(index: number, total: number): { xIndex: number; row: n
   const xIndex = index - rowStart;
   return { xIndex, row, itemsInRow };
 }
+
+function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPreset, columns: number): { x: number; y: number } {
+  if (preset === 'custom') {
+    return { x: 0, y: 0 };
+  }
+
+  const safeColumns = Math.max(1, Math.round(columns));
+  const slot = getLineupTarget(index, total, safeColumns);
+  const rowCenter = (slot.itemsInRow - 1) / 2;
+  const xSpacing = safeColumns <= 2 ? 0.62 : 0.52;
+  const yStep = safeColumns === 1 ? 0.46 : 0.4;
+  const x = (slot.xIndex - rowCenter) * xSpacing;
+  const yStart = safeColumns === 1 ? 0.34 : 0.24;
+  const y = yStart - slot.row * yStep;
+  return { x, y };
+}
+
+
 
 function projectNdcToGround(
   ndcX: number,
@@ -867,6 +913,13 @@ function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fo
   const center = projectNdcToGround(0, 0.02, cameraX, cameraY, cameraZ, fov);
   const lower = projectNdcToGround(0, -0.55, cameraX, cameraY, cameraZ, fov);
   return Math.atan2(lower.x - center.x, lower.z - center.z);
+}
+
+
+function getPeopleLayoutRowCount(total: number, preset: PeopleLayoutPreset, columns: number): number {
+  if (preset === 'custom') return 1;
+  const safeColumns = Math.max(1, Math.round(columns));
+  return Math.max(1, Math.ceil(total / safeColumns));
 }
 
 export default function LandingScene3D({
@@ -907,10 +960,19 @@ export default function LandingScene3D({
   );
 
   const isPeopleMode = mode === 'people';
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsNarrowViewport(window.innerWidth < 920);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
   const preRunTurnSeconds = tuning.preRunTurnSeconds;
   const runDurationSeconds = tuning.runDurationSeconds;
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
   const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
+  const [relayoutProgress, setRelayoutProgress] = useState(1);
   const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
   const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
@@ -948,6 +1010,9 @@ export default function LandingScene3D({
   };
   const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
+  const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
+  const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
+  const sceneHeightPercent = canvasScalePercent;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -998,6 +1063,46 @@ export default function LandingScene3D({
   }, [isPeopleMode, totalTransitionSeconds]);
 
 
+
+
+
+  const previousLayoutKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const layoutKey = `${activeLayoutPreset}:${activeLayoutColumns}`;
+
+    if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      previousLayoutKeyRef.current = layoutKey;
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const previousLayoutKey = previousLayoutKeyRef.current;
+    previousLayoutKeyRef.current = layoutKey;
+
+    // Do not rerun when entering People mode; only rerun when layout settings change while already in People.
+    if (previousLayoutKey === null || peopleTransitionProgress < 0.999 || previousLayoutKey === layoutKey) {
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const start = performance.now();
+    const duration = Math.max(0.01, tuning.runDurationSeconds);
+    let raf = 0;
+    setRelayoutProgress(0);
+
+    const tick = (time: number) => {
+      const t = Math.max(0, Math.min(1, (time - start) / (duration * 1000)));
+      setRelayoutProgress(t);
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+      }
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
+
   if (!isWebGLAvailable) {
     return null;
   }
@@ -1007,7 +1112,7 @@ export default function LandingScene3D({
       className="scene-layer"
       style={{
         width: `${canvasScalePercent}%`,
-        height: `${canvasScalePercent}%`,
+        height: `${sceneHeightPercent}%`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
         transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
@@ -1070,26 +1175,16 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const ndcById: Record<string, { x: number; y: number }> = {
-            alex: { x: -0.34, y: 0.19 },
-            bea: { x: 0, y: 0.19 },
-            chen: { x: 0.34, y: 0.19 },
-            dina: { x: -0.15, y: -0.12 },
-            eli: { x: 0.15, y: -0.12 },
-          };
-          const known = ndcById[character.id];
-          const lineupSlot = getLineupTarget(index, orderedCharacters.length);
-          const rowCenter = (lineupSlot.itemsInRow - 1) / 2;
-          const slotX = lineupSlot.xIndex - rowCenter;
-          const ndcX = known?.x ?? slotX * 0.3;
-          const ndcY = known?.y ?? 0.24 - lineupSlot.row * 0.42;
+          const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
+          const ndcX = layoutNdc.x;
+          const ndcY = layoutNdc.y;
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
-            effectiveTuning.cameraX,
-            effectiveTuning.cameraY,
-            effectiveTuning.cameraZ,
-            effectiveTuning.fov,
+            peopleTargetTuning.cameraX,
+            peopleTargetTuning.cameraY,
+            peopleTargetTuning.cameraZ,
+            peopleTargetTuning.fov,
           );
           const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
             x: projectedLineupTarget.x,
@@ -1101,10 +1196,13 @@ export default function LandingScene3D({
             rotZ: 0,
           };
           const peopleOverride = rawPeopleOverride;
+          const useCustomLayout = isPeopleMode && activeLayoutPreset === 'custom';
           const lineupTarget = isPeopleMode
-            ? { x: peopleOverride.x, z: peopleOverride.z }
+            ? useCustomLayout
+              ? { x: peopleOverride.x, z: peopleOverride.z }
+              : projectedLineupTarget
             : projectedLineupTarget;
-          const activeOverride = isPeopleMode && editMode ? peopleOverride : homeOverride;
+          const activeOverride = isPeopleMode ? (useCustomLayout ? peopleOverride : homeOverride) : homeOverride;
 
           return (
             <group key={character.id}>
@@ -1140,6 +1238,10 @@ export default function LandingScene3D({
                 peopleFinalRotZ={peopleOverride.rotZ}
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
+                relayoutProgress={relayoutProgress}
+                relayoutActive={isPeopleMode && activeLayoutPreset !== 'custom' && relayoutProgress < 0.999}
+                isTransitioningVisual={relayoutProgress < 0.999 || (peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999)}
+                useCustomLayout={useCustomLayout}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
