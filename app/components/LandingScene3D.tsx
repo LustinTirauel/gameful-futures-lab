@@ -345,22 +345,28 @@ function DraggableCharacter({
     const inPeopleTransition = relayoutActive || (!editMode && (isPeopleMode || peopleTransitionProgress > 0.001));
 
     if (inPeopleTransition) {
-      const activeProgress = relayoutActive ? relayoutProgress : peopleTransitionProgress;
-      const startX = relayoutActive ? peopleStartPosition.current.x : override.x;
-      const startZ = relayoutActive ? peopleStartPosition.current.z : override.z;
-      const desiredX = startX + (lineupTarget.x - startX) * activeProgress;
-      const desiredZ = startZ + (lineupTarget.z - startZ) * activeProgress;
+      const transitionProgress = relayoutActive
+        ? relayoutProgress
+        : isPeopleMode
+          ? peopleTransitionProgress
+          : 1 - peopleTransitionProgress;
+      const startX = peopleStartPosition.current.x;
+      const startZ = peopleStartPosition.current.z;
+      const targetX = isPeopleMode || relayoutActive ? lineupTarget.x : override.x;
+      const targetZ = isPeopleMode || relayoutActive ? lineupTarget.z : override.z;
+      const desiredX = startX + (targetX - startX) * transitionProgress;
+      const desiredZ = startZ + (targetZ - startZ) * transitionProgress;
 
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const hasArrived = isPeopleMode && !isPreRunTurning && !relayoutActive && peopleTransitionProgress >= 0.999;
+      const hasArrived = isPeopleMode && !isPreRunTurning && !relayoutActive && transitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = relayoutActive || (!isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999);
+      const isRunningNow = relayoutActive || (!isPreRunTurning && transitionProgress > 0.001 && transitionProgress < 0.999);
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -369,9 +375,9 @@ function DraggableCharacter({
       const baseY = isPeopleMode ? peopleFinalY : override.y;
       groupRef.current.position.y = baseY + bob;
 
-      const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
-      const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
-      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const runTargetX = targetX;
+      const runTargetZ = targetZ;
+      const preTurnY = Math.atan2(targetX - desiredX, targetZ - desiredZ);
       const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
       const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
       const desiredRotX = isPeopleMode ? peopleFinalRotX : 0;
