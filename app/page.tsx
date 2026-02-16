@@ -293,13 +293,6 @@ export default function Home() {
   }
 
 
-  function handlePondScaleChange(value: number) {
-    const currentPond = sceneTuning.environmentOverrides.pond;
-    if (!currentPond) return;
-    updateEnvironmentOverride('pond', { ...currentPond, scale: value });
-    setSelectedModelId('pond');
-  }
-
   function handleSelectedModelFieldChange(key: keyof ModelOverride, value: number) {
     if (!selectedModelId) return;
 
@@ -366,18 +359,6 @@ export default function Home() {
                 </label>
               )}
 
-              <label>
-                <span>Pond scale</span>
-                <input
-                  type="range"
-                  min={0.4}
-                  max={3}
-                  step={0.01}
-                  value={sceneTuning.environmentOverrides.pond?.scale ?? 1}
-                  onChange={(event) => handlePondScaleChange(Number(event.target.value))}
-                />
-                <strong>{(sceneTuning.environmentOverrides.pond?.scale ?? 1).toFixed(2)}</strong>
-              </label>
 
               {selectedModelId && (
                 <section className="character-editor">
