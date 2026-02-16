@@ -343,8 +343,14 @@ export default function Home() {
     }
   }
 
+  const activePeoplePreset = isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset;
+  const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
+  const activePeopleRows = activePeoplePreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / activePeopleColumns);
+  const peopleNeedsScroll = mode === 'people' && activePeoplePreset !== 'custom' && activePeopleRows > 2;
+  const peopleScrollSpacerVh = peopleNeedsScroll ? Math.min(180, 35 + (activePeopleRows - 2) * 28) : 0;
+
   return (
-    <main className={`main ${mode === 'people' ? (((isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset) !== 'custom' && Math.ceil(sceneCharacters.length / Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns)) > 2) ? 'main-people main-people-scroll' : 'main-people') : ''}`}>
+    <main className={`main ${mode === 'people' ? (peopleNeedsScroll ? 'main-people main-people-scroll' : 'main-people') : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
@@ -545,6 +551,8 @@ export default function Home() {
           <li>People tag filters with "run away" behavior</li>
         </ul>
       </section>
+
+      {peopleNeedsScroll && <div style={{ height: `${peopleScrollSpacerVh}vh` }} aria-hidden="true" />}
 
       <div className="vignette" />
     </main>
