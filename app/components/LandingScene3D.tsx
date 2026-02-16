@@ -281,6 +281,7 @@ function DraggableCharacter({
   peopleFinalRotZ,
   peopleFinalY,
   peopleFinalScale,
+  forcePeopleLayoutRun,
   onArrivalChange,
   onActivate,
 }: {
@@ -303,6 +304,7 @@ function DraggableCharacter({
   peopleFinalRotZ: number;
   peopleFinalY: number;
   peopleFinalScale: number;
+  forcePeopleLayoutRun: boolean;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -334,7 +336,7 @@ function DraggableCharacter({
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const inPeopleTransition = !editMode && (isPeopleMode || peopleTransitionProgress > 0.001);
+    const inPeopleTransition = (!editMode || forcePeopleLayoutRun) && (isPeopleMode || peopleTransitionProgress > 0.001);
 
     if (inPeopleTransition) {
       const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
@@ -844,30 +846,36 @@ function getLineupTarget(index: number, total: number, columns = 3): { xIndex: n
 
 function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPreset): { x: number; y: number } {
   if (preset === 'diamond') {
-    const ndcById = [
-      { x: -0.34, y: 0.19 },
-      { x: 0, y: 0.19 },
-      { x: 0.34, y: 0.19 },
-      { x: -0.15, y: -0.12 },
-      { x: 0.15, y: -0.12 },
+    const primary = [
+      { x: -0.36, y: 0.2 },
+      { x: 0, y: 0.2 },
+      { x: 0.36, y: 0.2 },
+      { x: -0.18, y: -0.14 },
+      { x: 0.18, y: -0.14 },
     ];
-    return ndcById[index] ?? { x: 0, y: 0 };
+    if (index < primary.length) return primary[index];
+
+    const extra = index - primary.length;
+    const slot = getLineupTarget(extra, Math.max(0, total - primary.length), 2);
+    const rowCenter = (slot.itemsInRow - 1) / 2;
+    return { x: (slot.xIndex - rowCenter) * 0.4, y: -0.48 - slot.row * 0.36 };
   }
 
   if (preset === 'equal-grid') {
-    const slot = getLineupTarget(index, total, 3);
+    const slot = getLineupTarget(index, total, 2);
     const rowCenter = (slot.itemsInRow - 1) / 2;
-    return { x: (slot.xIndex - rowCenter) * 0.3, y: 0.22 - slot.row * 0.38 };
+    return { x: (slot.xIndex - rowCenter) * 0.5, y: 0.24 - slot.row * 0.33 };
   }
 
   if (preset === 'two-columns') {
     const slot = getLineupTarget(index, total, 2);
     const rowCenter = (slot.itemsInRow - 1) / 2;
-    return { x: (slot.xIndex - rowCenter) * 0.34, y: 0.24 - slot.row * 0.3 };
+    return { x: (slot.xIndex - rowCenter) * 0.56, y: 0.28 - slot.row * 0.42 };
   }
 
   const slot = getLineupTarget(index, total, 1);
-  return { x: 0, y: 0.26 - slot.row * 0.24 };
+  const offsetX = slot.row % 2 === 0 ? 0 : 0.04;
+  return { x: offsetX, y: 0.3 - slot.row * 0.38 };
 }
 
 function projectNdcToGround(
@@ -938,19 +946,20 @@ export default function LandingScene3D({
     [characters],
   );
 
+  const isPeopleMode = mode === 'people';
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+
   useEffect(() => {
     const update = () => setIsNarrowViewport(window.innerWidth < 920);
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
-
-  const isPeopleMode = mode === 'people';
-  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const preRunTurnSeconds = tuning.preRunTurnSeconds;
   const runDurationSeconds = tuning.runDurationSeconds;
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
   const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
+  const [layoutTransitionProgress, setLayoutTransitionProgress] = useState(1);
   const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
   const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
@@ -988,6 +997,10 @@ export default function LandingScene3D({
   };
   const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
+  const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
+  const sceneHeightPercent = isPeopleMode && (activeLayoutPreset === 'one-column' || activeLayoutPreset === 'two-columns')
+    ? 140
+    : canvasScalePercent;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1038,6 +1051,28 @@ export default function LandingScene3D({
   }, [isPeopleMode, totalTransitionSeconds]);
 
 
+
+  useEffect(() => {
+    if (!isPeopleMode) {
+      setLayoutTransitionProgress(1);
+      return;
+    }
+
+    const start = performance.now();
+    const duration = Math.max(0.01, tuning.runDurationSeconds || 0.5);
+    let raf = 0;
+    setLayoutTransitionProgress(0);
+
+    const tick = (time: number) => {
+      const t = Math.max(0, Math.min(1, (time - start) / (duration * 1000)));
+      setLayoutTransitionProgress(t);
+      if (t < 1) raf = window.requestAnimationFrame(tick);
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isPeopleMode, activeLayoutPreset, tuning.runDurationSeconds]);
+
   if (!isWebGLAvailable) {
     return null;
   }
@@ -1047,7 +1082,7 @@ export default function LandingScene3D({
       className="scene-layer"
       style={{
         width: `${canvasScalePercent}%`,
-        height: `${canvasScalePercent}%`,
+        height: `${sceneHeightPercent}%`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
         transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
@@ -1110,7 +1145,6 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
           const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset);
           const ndcX = layoutNdc.x;
           const ndcY = layoutNdc.y;
@@ -1167,12 +1201,13 @@ export default function LandingScene3D({
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
                 isPreRunTurning={isPreRunTurning}
-                peopleTransitionProgress={peopleTransitionProgress}
+                peopleTransitionProgress={Math.min(peopleTransitionProgress, layoutTransitionProgress)}
                 peopleFinalRotX={peopleOverride.rotX}
                 peopleFinalRotY={peopleOverride.rotY}
                 peopleFinalRotZ={peopleOverride.rotZ}
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
+                forcePeopleLayoutRun={layoutTransitionProgress < 0.999}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }

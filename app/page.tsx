@@ -333,7 +333,7 @@ export default function Home() {
   }
 
   return (
-    <main className="main">
+    <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
