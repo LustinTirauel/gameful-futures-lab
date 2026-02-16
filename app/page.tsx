@@ -5,16 +5,17 @@ import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
   type ModelOverride,
+  type PeopleViewTuning,
   type SceneTuning,
 } from './components/LandingScene3D';
-import PeoplePanel from './components/PeoplePanel';
+import PeopleModal from './components/PeopleModal';
 import ProjectsLayer from './components/ProjectsLayer';
 import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
 type EditableModelId = string | 'fire';
-type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'fireOverride'>;
+type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'fireOverride' | 'environmentOverrides'>;
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {
   home: 'idle',
@@ -36,7 +37,27 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
   { key: 'sceneCanvasScale', label: 'Canvas Scale', min: 1, max: 2.6, step: 0.05 },
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
+  { key: 'preRunTurnSeconds', label: 'People pre-run turn (s)', min: 0, max: 4, step: 0.05 },
+  { key: 'runDurationSeconds', label: 'People run duration (s)', min: 0.5, max: 10, step: 0.1 },
 ];
+
+
+const peopleViewKeys: Array<keyof PeopleViewTuning> = [
+  'cameraX',
+  'cameraY',
+  'cameraZ',
+  'fov',
+  'fogNear',
+  'fogFar',
+  'characterScale',
+  'sceneOffsetX',
+  'sceneOffsetY',
+  'sceneCanvasScale',
+  'sceneRadius',
+];
+
+
+const environmentModelIds = ['pond', 'tree-1', 'tree-2', 'tree-3', 'tree-4', 'tree-5', 'sauna', 'logs'] as const;
 
 const modelFields: Array<{ key: keyof ModelOverride; min: number; max: number; step: number }> = [
   { key: 'scale', min: 0.4, max: 1.8, step: 0.01 },
@@ -71,9 +92,22 @@ export default function Home() {
           ...current.characterOverrides,
           ...(parsed.characterOverrides ?? {}),
         },
+        peopleCharacterOverrides: {
+          ...current.peopleCharacterOverrides,
+          ...(parsed.peopleCharacterOverrides ?? {}),
+        },
+        peopleViewTuning: {
+          ...current.peopleViewTuning,
+          ...(parsed.peopleViewTuning ?? {}),
+        },
+        peopleHueColor: parsed.peopleHueColor ?? current.peopleHueColor,
         fireOverride: {
           ...current.fireOverride,
           ...(parsed.fireOverride ?? {}),
+        },
+        environmentOverrides: {
+          ...current.environmentOverrides,
+          ...(parsed.environmentOverrides ?? {}),
         },
       }));
     } catch {
@@ -87,7 +121,7 @@ export default function Home() {
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const sceneCharacters = useMemo(
-    () => people.map((person) => ({ id: person.id, config: characterConfigs[person.id] })),
+    () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
     [],
   );
 
@@ -95,6 +129,12 @@ export default function Home() {
     selectedModelId && selectedModelId !== 'fire'
       ? sceneCharacters.find((character) => character.id === selectedModelId)
       : null;
+
+
+  const selectedPersonData = selectedPerson ? people.find((person) => person.id === selectedPerson) ?? null : null;
+  const selectedPersonProjects = selectedPerson
+    ? projects.filter((project) => project.memberIds.includes(selectedPerson))
+    : [];
 
   function handleModeChange(nextMode: Mode) {
     setMode(nextMode);
@@ -120,7 +160,25 @@ export default function Home() {
   }
 
   function handleTuningChange(key: NumericSceneTuningKey, value: number) {
-    setSceneTuning((current) => ({ ...current, [key]: value }));
+    setSceneTuning((current) => {
+      if (mode === 'people' && peopleViewKeys.includes(key as keyof PeopleViewTuning)) {
+        const peopleKey = key as keyof PeopleViewTuning;
+        return {
+          ...current,
+          peopleViewTuning: {
+            ...current.peopleViewTuning,
+            [peopleKey]: value,
+          },
+        };
+      }
+
+      return { ...current, [key]: value };
+    });
+  }
+
+
+  function handlePeopleHueColorChange(value: string) {
+    setSceneTuning((current) => ({ ...current, peopleHueColor: value }));
   }
 
   function handleTuningReset() {
@@ -139,26 +197,12 @@ export default function Home() {
   }
 
 
-  function buildCompleteCharacterOverrides(): Record<string, ModelOverride> {
-    return Object.fromEntries(
-      sceneCharacters.map((character) => [character.id, getCharacterOverride(character.id)]),
-    );
-  }
-
-  async function handleTuningCopy() {
-    const exportPayload: SceneTuning = {
-      ...sceneTuning,
-      characterOverrides: buildCompleteCharacterOverrides(),
-    };
-    await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
-  }
-
-  function getCharacterOverride(characterId: string): ModelOverride {
+  function getDefaultCharacterOverride(characterId: string): ModelOverride {
     const character = sceneCharacters.find((item) => item.id === characterId);
     const [x, y, z] = character?.config.position ?? [0, 0, 0];
     const [rotX, rotY, rotZ] = character?.config.rotation ?? [0, 0, 0];
 
-    return sceneTuning.characterOverrides[characterId] ?? {
+    return {
       x,
       y,
       z,
@@ -169,18 +213,74 @@ export default function Home() {
     };
   }
 
+  function getCharacterOverride(characterId: string, sceneMode: Mode = mode): ModelOverride {
+    const fallback = getDefaultCharacterOverride(characterId);
+    if (sceneMode === 'people') {
+      return sceneTuning.peopleCharacterOverrides[characterId] ?? fallback;
+    }
+    return sceneTuning.characterOverrides[characterId] ?? fallback;
+  }
+
+  function buildCompleteCharacterOverrides(sceneMode: 'home' | 'people'): Record<string, ModelOverride> {
+    return Object.fromEntries(
+      sceneCharacters.map((character) => [character.id, getCharacterOverride(character.id, sceneMode)]),
+    );
+  }
+
+  async function handleTuningCopy() {
+    const exportPayload: SceneTuning = {
+      ...sceneTuning,
+      characterOverrides: buildCompleteCharacterOverrides('home'),
+      peopleCharacterOverrides: buildCompleteCharacterOverrides('people'),
+    };
+    await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
+  }
+
+
+  function getTuningFieldValue(key: NumericSceneTuningKey): number {
+    if (mode === 'people' && peopleViewKeys.includes(key as keyof PeopleViewTuning)) {
+      return sceneTuning.peopleViewTuning[key as keyof PeopleViewTuning];
+    }
+    return sceneTuning[key];
+  }
+
   function getSelectedModelOverride(): ModelOverride | null {
     if (!selectedModelId) return null;
     if (selectedModelId === 'fire') return sceneTuning.fireOverride;
+    if (environmentModelIds.includes(selectedModelId as (typeof environmentModelIds)[number])) {
+      return sceneTuning.environmentOverrides[selectedModelId] ?? null;
+    }
     return getCharacterOverride(selectedModelId);
   }
 
   function updateCharacterOverride(characterId: string, nextOverride: ModelOverride) {
+    setSceneTuning((current) => {
+      if (mode === 'people') {
+        return {
+          ...current,
+          peopleCharacterOverrides: {
+            ...current.peopleCharacterOverrides,
+            [characterId]: nextOverride,
+          },
+        };
+      }
+
+      return {
+        ...current,
+        characterOverrides: {
+          ...current.characterOverrides,
+          [characterId]: nextOverride,
+        },
+      };
+    });
+  }
+
+  function updateEnvironmentOverride(modelId: string, nextOverride: ModelOverride) {
     setSceneTuning((current) => ({
       ...current,
-      characterOverrides: {
-        ...current.characterOverrides,
-        [characterId]: nextOverride,
+      environmentOverrides: {
+        ...current.environmentOverrides,
+        [modelId]: nextOverride,
       },
     }));
   }
@@ -192,6 +292,7 @@ export default function Home() {
     }));
   }
 
+
   function handleSelectedModelFieldChange(key: keyof ModelOverride, value: number) {
     if (!selectedModelId) return;
 
@@ -201,6 +302,8 @@ export default function Home() {
 
     if (selectedModelId === 'fire') {
       updateFireOverride(next);
+    } else if (environmentModelIds.includes(selectedModelId as (typeof environmentModelIds)[number])) {
+      updateEnvironmentOverride(selectedModelId, next);
     } else {
       updateCharacterOverride(selectedModelId, next);
     }
@@ -208,10 +311,11 @@ export default function Home() {
 
   return (
     <main className="main">
-      {mode === 'home' && !scene3DFailed && (
+      {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
           movementBehavior={modeMovementBehavior[mode]}
+          mode={mode}
           onRuntimeError={handleSceneRuntimeError}
           tuning={sceneTuning}
           editMode={editMode}
@@ -219,6 +323,8 @@ export default function Home() {
           onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
           onCharacterOverrideChange={updateCharacterOverride}
           onFireOverrideChange={updateFireOverride}
+          onEnvironmentOverrideChange={updateEnvironmentOverride}
+          onCharacterActivate={handleCharacterSelect}
         />
       )}
 
@@ -231,16 +337,28 @@ export default function Home() {
         </div>
       )}
 
-      {mode === 'home' && (
+      {(mode === 'home' || mode === 'people') && (
         <>
           <button className="tuning-toggle" onClick={handleToggleEditMode}>
-            {editMode ? 'Close edit mode' : 'Edit mode'}
+            {editMode ? 'Close edit mode' : `Edit ${mode === 'people' ? 'people' : 'home'} scene`}
           </button>
 
           {editMode && (
             <aside className="tuning-panel">
-              <h3>Scene edit mode</h3>
+              <h3>{mode === 'people' ? 'People scene edit mode' : 'Scene edit mode'}</h3>
               <p>Drag models in X/Z, then fine tune with sliders. Values auto-save.</p>
+
+              {mode === 'people' && (
+                <label>
+                  <span>People hue color</span>
+                  <input
+                    type="color"
+                    value={sceneTuning.peopleHueColor}
+                    onChange={(event) => handlePeopleHueColorChange(event.target.value)}
+                  />
+                </label>
+              )}
+
 
               {selectedModelId && (
                 <section className="character-editor">
@@ -275,10 +393,10 @@ export default function Home() {
                       min={field.min}
                       max={field.max}
                       step={field.step}
-                      value={sceneTuning[field.key]}
+                      value={getTuningFieldValue(field.key)}
                       onChange={(event) => handleTuningChange(field.key, Number(event.target.value))}
                     />
-                    <strong>{sceneTuning[field.key].toFixed(2)}</strong>
+                    <strong>{getTuningFieldValue(field.key).toFixed(2)}</strong>
                   </label>
                 ))}
               </div>
@@ -292,7 +410,7 @@ export default function Home() {
         </>
       )}
 
-      {(mode !== 'home' || scene3DFailed) && (
+      {(mode === 'projects' || scene3DFailed) && (
         <CharacterLayer
           mode={mode}
           reactionId={reactionId}
@@ -302,7 +420,13 @@ export default function Home() {
         />
       )}
 
-      {mode === 'people' && <PeoplePanel people={sortedPeople} selectedPerson={selectedPerson} />}
+      {mode === 'people' && selectedPersonData && (
+        <PeopleModal
+          person={selectedPersonData}
+          projects={selectedPersonProjects}
+          onClose={() => setSelectedPerson(null)}
+        />
+      )}
 
       {mode === 'projects' && (
         <ProjectsLayer
