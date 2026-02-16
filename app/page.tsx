@@ -14,7 +14,7 @@ import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
-type PeopleLayoutPreset = 'regular' | 'diamond' | 'custom';
+type PeopleLayoutPreset = 'regular' | 'custom';
 type EditableModelId = string | 'fire';
 type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'peopleLayoutPreset' | 'peopleLayoutPresetNarrow' | 'fireOverride' | 'environmentOverrides'>;
 
@@ -70,7 +70,6 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
 
 const peopleLayoutOptions: Array<{ value: PeopleLayoutPreset; label: string }> = [
   { value: 'regular', label: 'Regular' },
-  { value: 'diamond', label: 'Diamond' },
   { value: 'custom', label: 'Custom (manual)' },
 ];
 
@@ -96,6 +95,7 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -136,6 +136,13 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
   }, [sceneTuning]);
+
+  useEffect(() => {
+    const update = () => setIsNarrowViewport(window.innerWidth < 920);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const sceneCharacters = useMemo(
@@ -337,7 +344,7 @@ export default function Home() {
   }
 
   return (
-    <main className={`main ${mode === 'people' && (((sceneTuning.peopleLayoutPresetNarrow === 'custom' ? 1 : Math.ceil(sceneCharacters.length / Math.max(1, sceneTuning.peopleLayoutColumnsNarrow))) > 2) || ((sceneTuning.peopleLayoutPreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / Math.max(1, sceneTuning.peopleLayoutColumns))) > 2)) ? 'main-people main-people-scroll' : mode === 'people' ? 'main-people' : ''}`}>
+    <main className={`main ${mode === 'people' ? (((isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset) !== 'custom' && Math.ceil(sceneCharacters.length / Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns)) > 2) ? 'main-people main-people-scroll' : 'main-people') : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}

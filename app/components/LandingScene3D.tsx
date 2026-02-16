@@ -10,7 +10,7 @@ import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
 type MovementBehavior = 'idle' | 'run';
-type PeopleLayoutPreset = 'regular' | 'diamond' | 'custom';
+type PeopleLayoutPreset = 'regular' | 'custom';
 
 export type ModelOverride = {
   x: number;
@@ -205,7 +205,7 @@ export const defaultSceneTuning: SceneTuning = {
     directionalLightZ: 3.5,
   },
   peopleHueColor: '#6c527a',
-  peopleLayoutPreset: 'diamond',
+  peopleLayoutPreset: 'regular',
   peopleLayoutPresetNarrow: 'regular',
   peopleLayoutColumns: 3,
   peopleLayoutColumnsNarrow: 2,
@@ -335,7 +335,7 @@ function DraggableCharacter({
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode, editMode, override.x, override.z]);
+  }, [id, isPeopleMode, editMode, override.x, override.z, lineupTarget.x, lineupTarget.z, forcePeopleLayoutRun]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -343,19 +343,24 @@ function DraggableCharacter({
     const inPeopleTransition = (!editMode || forcePeopleLayoutRun) && (isPeopleMode || peopleTransitionProgress > 0.001);
 
     if (inPeopleTransition) {
-      const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
-      const desiredZ = override.z + (lineupTarget.z - override.z) * peopleTransitionProgress;
+      const transitionProgress = isPeopleMode ? peopleTransitionProgress : 1 - peopleTransitionProgress;
+      const targetX = isPeopleMode ? lineupTarget.x : override.x;
+      const targetZ = isPeopleMode ? lineupTarget.z : override.z;
+      const startX = peopleStartPosition.current.x;
+      const startZ = peopleStartPosition.current.z;
+      const desiredX = startX + (targetX - startX) * transitionProgress;
+      const desiredZ = startZ + (targetZ - startZ) * transitionProgress;
 
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const hasArrived = isPeopleMode && !isPreRunTurning && peopleTransitionProgress >= 0.999;
+      const hasArrived = isPeopleMode && !isPreRunTurning && transitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = !isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
+      const isRunningNow = !isPreRunTurning && transitionProgress > 0.001 && transitionProgress < 0.999;
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -364,9 +369,9 @@ function DraggableCharacter({
       const baseY = isPeopleMode ? peopleFinalY : override.y;
       groupRef.current.position.y = baseY + bob;
 
-      const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
-      const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
-      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const runTargetX = targetX;
+      const runTargetZ = targetZ;
+      const preTurnY = Math.atan2(targetX - desiredX, targetZ - desiredZ);
       const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
       const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
       const desiredRotX = isPeopleMode ? peopleFinalRotX : 0;
@@ -849,23 +854,20 @@ function getLineupTarget(index: number, total: number, columns = 3): { xIndex: n
 }
 
 function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPreset, columns: number): { x: number; y: number } {
-  const safeColumns = Math.max(1, Math.round(columns));
-
-  if (preset === 'diamond') {
-    const slot = getLineupTarget(index, total, safeColumns);
-    const rowCenter = (slot.itemsInRow - 1) / 2;
-    const checkerOffset = slot.row % 2 === 0 ? 0 : 0.5;
-    const x = (slot.xIndex - rowCenter + checkerOffset) * 0.48;
-    const y = 0.24 - slot.row * 0.36;
-    return { x, y };
+  if (preset === 'custom') {
+    return { x: 0, y: 0 };
   }
 
+  const safeColumns = Math.max(1, Math.round(columns));
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
-  const x = (slot.xIndex - rowCenter) * 0.48;
-  const y = 0.24 - slot.row * 0.34;
+  const xSpacing = safeColumns <= 2 ? 0.62 : 0.52;
+  const yStep = safeColumns === 1 ? 0.52 : 0.4;
+  const x = (slot.xIndex - rowCenter) * xSpacing;
+  const y = 0.24 - slot.row * yStep;
   return { x, y };
 }
+
 
 
 function projectNdcToGround(
@@ -998,7 +1000,7 @@ export default function LandingScene3D({
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
   const layoutRowCount = getPeopleLayoutRowCount(orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
   const needsPeopleScroll = isPeopleMode && activeLayoutPreset !== 'custom' && layoutRowCount > 2;
-  const sceneHeightPercent = needsPeopleScroll ? Math.min(220, 100 + (layoutRowCount - 2) * 18) : canvasScalePercent;
+  const sceneHeightPercent = needsPeopleScroll ? Math.min(320, 100 + (layoutRowCount - 2) * 30) : canvasScalePercent;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1200,13 +1202,13 @@ export default function LandingScene3D({
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
                 isPreRunTurning={isPreRunTurning}
-                peopleTransitionProgress={Math.min(peopleTransitionProgress, layoutTransitionProgress)}
+                peopleTransitionProgress={activeLayoutPreset === 'custom' ? peopleTransitionProgress : Math.min(peopleTransitionProgress, layoutTransitionProgress)}
                 peopleFinalRotX={peopleOverride.rotX}
                 peopleFinalRotY={peopleOverride.rotY}
                 peopleFinalRotZ={peopleOverride.rotZ}
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
-                forcePeopleLayoutRun={activeLayoutPreset !== 'custom' && layoutTransitionProgress < 0.999}
+                forcePeopleLayoutRun={isPeopleMode && activeLayoutPreset !== 'custom' && layoutTransitionProgress < 0.999}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
