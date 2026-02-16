@@ -37,6 +37,11 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
   { key: 'sceneCanvasScale', label: 'Canvas Scale', min: 1, max: 2.6, step: 0.05 },
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
+  { key: 'ambientLightIntensity', label: 'Ambient Light Intensity', min: 0, max: 2.5, step: 0.05 },
+  { key: 'directionalLightIntensity', label: 'Directional Light Intensity', min: 0, max: 3, step: 0.05 },
+  { key: 'directionalLightX', label: 'Light Direction X', min: -20, max: 20, step: 0.1 },
+  { key: 'directionalLightY', label: 'Light Direction Y', min: -20, max: 20, step: 0.1 },
+  { key: 'directionalLightZ', label: 'Light Direction Z', min: -20, max: 20, step: 0.1 },
   { key: 'preRunTurnSeconds', label: 'People pre-run turn (s)', min: 0, max: 4, step: 0.05 },
   { key: 'runDurationSeconds', label: 'People run duration (s)', min: 0.5, max: 10, step: 0.1 },
 ];
@@ -54,6 +59,11 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
   'sceneOffsetY',
   'sceneCanvasScale',
   'sceneRadius',
+  'ambientLightIntensity',
+  'directionalLightIntensity',
+  'directionalLightX',
+  'directionalLightY',
+  'directionalLightZ',
 ];
 
 

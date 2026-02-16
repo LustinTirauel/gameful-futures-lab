@@ -33,6 +33,11 @@ export type SceneTuning = {
   sceneOffsetY: number;
   sceneCanvasScale: number;
   sceneRadius: number;
+  ambientLightIntensity: number;
+  directionalLightIntensity: number;
+  directionalLightX: number;
+  directionalLightY: number;
+  directionalLightZ: number;
   preRunTurnSeconds: number;
   runDurationSeconds: number;
   characterOverrides: Record<string, ModelOverride>;
@@ -56,6 +61,11 @@ export type PeopleViewTuning = Pick<
   | 'sceneOffsetY'
   | 'sceneCanvasScale'
   | 'sceneRadius'
+  | 'ambientLightIntensity'
+  | 'directionalLightIntensity'
+  | 'directionalLightX'
+  | 'directionalLightY'
+  | 'directionalLightZ'
 >;
 
 export const defaultSceneTuning: SceneTuning = {
@@ -70,6 +80,11 @@ export const defaultSceneTuning: SceneTuning = {
   sceneOffsetY: 6,
   sceneCanvasScale: 1.4,
   sceneRadius: 40,
+  ambientLightIntensity: 0.6,
+  directionalLightIntensity: 1,
+  directionalLightX: 2.5,
+  directionalLightY: 4,
+  directionalLightZ: 2.5,
   preRunTurnSeconds: 0,
   runDurationSeconds: 0.5,
   characterOverrides: {
@@ -178,6 +193,11 @@ export const defaultSceneTuning: SceneTuning = {
     sceneOffsetY: -4.5,
     sceneCanvasScale: 1.4,
     sceneRadius: 40,
+    ambientLightIntensity: 0.6,
+    directionalLightIntensity: 1,
+    directionalLightX: 2.5,
+    directionalLightY: 4,
+    directionalLightZ: 2.5,
   },
   peopleHueColor: '#69526f',
   fireOverride: {
@@ -912,6 +932,19 @@ export default function LandingScene3D({
       peopleTransitionProgress,
     ),
     sceneRadius: lerpNumber(tuning.sceneRadius, peopleTargetTuning.sceneRadius, peopleTransitionProgress),
+    ambientLightIntensity: lerpNumber(
+      tuning.ambientLightIntensity,
+      peopleTargetTuning.ambientLightIntensity,
+      peopleTransitionProgress,
+    ),
+    directionalLightIntensity: lerpNumber(
+      tuning.directionalLightIntensity,
+      peopleTargetTuning.directionalLightIntensity,
+      peopleTransitionProgress,
+    ),
+    directionalLightX: lerpNumber(tuning.directionalLightX, peopleTargetTuning.directionalLightX, peopleTransitionProgress),
+    directionalLightY: lerpNumber(tuning.directionalLightY, peopleTargetTuning.directionalLightY, peopleTransitionProgress),
+    directionalLightZ: lerpNumber(tuning.directionalLightZ, peopleTargetTuning.directionalLightZ, peopleTransitionProgress),
   };
   const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
@@ -993,8 +1026,13 @@ export default function LandingScene3D({
         />
         <color attach="background" args={[backgroundColor]} />
         <fog attach="fog" args={[fogColor, effectiveTuning.fogNear, effectiveTuning.fogFar]} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[2.5, 4, 2.5]} intensity={1} color={directionalColor} castShadow />
+        <ambientLight intensity={effectiveTuning.ambientLightIntensity} />
+        <directionalLight
+          position={[effectiveTuning.directionalLightX, effectiveTuning.directionalLightY, effectiveTuning.directionalLightZ]}
+          intensity={effectiveTuning.directionalLightIntensity}
+          color={directionalColor}
+          castShadow
+        />
 
         <mesh position={[0, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[effectiveTuning.sceneRadius, 72]} />
