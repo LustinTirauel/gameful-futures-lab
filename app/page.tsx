@@ -14,7 +14,7 @@ import TopNav from './components/TopNav';
 import { characterConfigs, people, projects } from './data/content';
 
 type Mode = 'home' | 'people' | 'projects';
-type PeopleLayoutPreset = 'equal-grid' | 'diamond' | 'two-columns' | 'one-column';
+type PeopleLayoutPreset = 'regular' | 'diamond' | 'custom';
 type EditableModelId = string | 'fire';
 type NumericSceneTuningKey = Exclude<keyof SceneTuning, 'characterOverrides' | 'peopleCharacterOverrides' | 'peopleViewTuning' | 'peopleHueColor' | 'peopleLayoutPreset' | 'peopleLayoutPresetNarrow' | 'fireOverride' | 'environmentOverrides'>;
 
@@ -69,10 +69,9 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
 
 
 const peopleLayoutOptions: Array<{ value: PeopleLayoutPreset; label: string }> = [
-  { value: 'equal-grid', label: 'Equal rows and columns' },
+  { value: 'regular', label: 'Regular' },
   { value: 'diamond', label: 'Diamond' },
-  { value: 'two-columns', label: 'Two columns' },
-  { value: 'one-column', label: 'One column' },
+  { value: 'custom', label: 'Custom (manual)' },
 ];
 
 
@@ -204,6 +203,11 @@ export default function Home() {
     setSceneTuning((current) => ({ ...current, [key]: value }));
   }
 
+  function handlePeopleLayoutColumnsChange(key: 'peopleLayoutColumns' | 'peopleLayoutColumnsNarrow', value: number) {
+    const next = Math.max(1, Math.min(6, Math.round(value)));
+    setSceneTuning((current) => ({ ...current, [key]: next }));
+  }
+
   function handleTuningReset() {
     setSceneTuning(defaultSceneTuning);
     setSelectedModelId(null);
@@ -333,7 +337,7 @@ export default function Home() {
   }
 
   return (
-    <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
+    <main className={`main ${mode === 'people' && (((sceneTuning.peopleLayoutPresetNarrow === 'custom' ? 1 : Math.ceil(sceneCharacters.length / Math.max(1, sceneTuning.peopleLayoutColumnsNarrow))) > 2) || ((sceneTuning.peopleLayoutPreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / Math.max(1, sceneTuning.peopleLayoutColumns))) > 2)) ? 'main-people main-people-scroll' : mode === 'people' ? 'main-people' : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
@@ -398,6 +402,22 @@ export default function Home() {
                     </select>
                   </label>
 
+                  {sceneTuning.peopleLayoutPreset !== 'custom' && (
+                    <label>
+                      <span>People columns (desktop/wide)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={6}
+                        step={1}
+                        value={sceneTuning.peopleLayoutColumns}
+                        onChange={(event) =>
+                          handlePeopleLayoutColumnsChange('peopleLayoutColumns', Number(event.target.value))
+                        }
+                      />
+                    </label>
+                  )}
+
                   <label>
                     <span>People layout (mobile/narrow)</span>
                     <select
@@ -413,6 +433,22 @@ export default function Home() {
                       ))}
                     </select>
                   </label>
+
+                  {sceneTuning.peopleLayoutPresetNarrow !== 'custom' && (
+                    <label>
+                      <span>People columns (mobile/narrow)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={6}
+                        step={1}
+                        value={sceneTuning.peopleLayoutColumnsNarrow}
+                        onChange={(event) =>
+                          handlePeopleLayoutColumnsChange('peopleLayoutColumnsNarrow', Number(event.target.value))
+                        }
+                      />
+                    </label>
+                  )}
                 </>
               )}
 
