@@ -254,6 +254,8 @@ function DraggableCharacter({
   peopleFinalRotX,
   peopleFinalRotY,
   peopleFinalRotZ,
+  peopleFinalY,
+  peopleFinalScale,
   onArrivalChange,
   onActivate,
 }: {
@@ -274,6 +276,8 @@ function DraggableCharacter({
   peopleFinalRotX: number;
   peopleFinalRotY: number;
   peopleFinalRotZ: number;
+  peopleFinalY: number;
+  peopleFinalScale: number;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -326,7 +330,8 @@ function DraggableCharacter({
       }
 
       const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
-      groupRef.current.position.y = override.y + bob;
+      const baseY = isPeopleMode ? peopleFinalY : override.y;
+      groupRef.current.position.y = baseY + bob;
 
       const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
       const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
@@ -347,7 +352,8 @@ function DraggableCharacter({
       const bob = movementBehavior === 'run' && !editMode
         ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045
         : 0;
-      groupRef.current.position.y = override.y + bob;
+      const baseY = isPeopleMode ? peopleFinalY : override.y;
+      groupRef.current.position.y = baseY + bob;
 
       groupRef.current.rotation.y += (override.rotY - groupRef.current.rotation.y) * 0.12;
       groupRef.current.rotation.x += (override.rotX - groupRef.current.rotation.x) * 0.12;
@@ -355,16 +361,14 @@ function DraggableCharacter({
     }
   });
 
+  const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
+
   return (
     <group
       ref={groupRef}
       position={[override.x, override.y, override.z]}
       rotation={[override.rotX, override.rotY, override.rotZ]}
-      scale={[
-        override.scale * globalCharacterScale,
-        override.scale * globalCharacterScale,
-        override.scale * globalCharacterScale,
-      ]}
+      scale={[visibleScale, visibleScale, visibleScale]}
       onPointerDown={(event) => {
         if (!editMode) return;
         event.stopPropagation();
@@ -1096,6 +1100,8 @@ export default function LandingScene3D({
                 peopleFinalRotX={peopleOverride.rotX}
                 peopleFinalRotY={peopleOverride.rotY}
                 peopleFinalRotZ={peopleOverride.rotZ}
+                peopleFinalY={peopleOverride.y}
+                peopleFinalScale={peopleOverride.scale}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
