@@ -347,7 +347,7 @@ export default function Home() {
   const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
   const activePeopleRows = activePeoplePreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / activePeopleColumns);
   const peopleNeedsScroll = mode === 'people' && activePeoplePreset !== 'custom' && activePeopleRows > 2;
-  const peopleScrollSpacerVh = peopleNeedsScroll ? Math.min(180, 35 + (activePeopleRows - 2) * 28) : 0;
+  const peopleScrollSpacerVh = peopleNeedsScroll ? Math.min(260, 70 + (activePeopleRows - 2) * 44) : 0;
 
   return (
     <main className={`main ${mode === 'people' ? (peopleNeedsScroll ? 'main-people main-people-scroll' : 'main-people') : ''}`}>

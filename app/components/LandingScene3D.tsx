@@ -91,7 +91,7 @@ export const defaultSceneTuning: SceneTuning = {
   directionalLightY: 20,
   directionalLightZ: 11.8,
   preRunTurnSeconds: 0,
-  runDurationSeconds: 0.5,
+  runDurationSeconds: 0.9,
   characterOverrides: {
     alex: {
       x: -3.1122954462698234,
@@ -285,6 +285,10 @@ function DraggableCharacter({
   peopleFinalRotZ,
   peopleFinalY,
   peopleFinalScale,
+  relayoutProgress,
+  relayoutActive,
+  isTransitioningVisual,
+  useCustomLayout,
   onArrivalChange,
   onActivate,
 }: {
@@ -307,6 +311,10 @@ function DraggableCharacter({
   peopleFinalRotZ: number;
   peopleFinalY: number;
   peopleFinalScale: number;
+  relayoutProgress: number;
+  relayoutActive: boolean;
+  isTransitioningVisual: boolean;
+  useCustomLayout: boolean;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -325,7 +333,7 @@ function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
-    if (editMode) return;
+    if (editMode && !relayoutActive) return;
 
     const currentX = groupRef.current?.position.x ?? override.x;
     const currentZ = groupRef.current?.position.z ?? override.z;
@@ -333,27 +341,36 @@ function DraggableCharacter({
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode, editMode, override.x, override.z, lineupTarget.x, lineupTarget.z]);
+  }, [id, isPeopleMode, editMode, relayoutActive, onArrivalChange, override.x, override.z]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const inPeopleTransition = !editMode && (isPeopleMode || peopleTransitionProgress > 0.001);
+    const inPeopleTransition = relayoutActive || (!editMode && (isPeopleMode || peopleTransitionProgress > 0.001));
 
     if (inPeopleTransition) {
-      const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
-      const desiredZ = override.z + (lineupTarget.z - override.z) * peopleTransitionProgress;
+      const transitionProgress = relayoutActive
+        ? relayoutProgress
+        : isPeopleMode
+          ? peopleTransitionProgress
+          : 1 - peopleTransitionProgress;
+      const startX = peopleStartPosition.current.x;
+      const startZ = peopleStartPosition.current.z;
+      const targetX = isPeopleMode || relayoutActive ? lineupTarget.x : override.x;
+      const targetZ = isPeopleMode || relayoutActive ? lineupTarget.z : override.z;
+      const desiredX = startX + (targetX - startX) * transitionProgress;
+      const desiredZ = startZ + (targetZ - startZ) * transitionProgress;
 
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const hasArrived = isPeopleMode && !isPreRunTurning && peopleTransitionProgress >= 0.999;
+      const hasArrived = isPeopleMode && !isPreRunTurning && !relayoutActive && transitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = !isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
+      const isRunningNow = relayoutActive || (!isPreRunTurning && transitionProgress > 0.001 && transitionProgress < 0.999);
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -362,9 +379,9 @@ function DraggableCharacter({
       const baseY = isPeopleMode ? peopleFinalY : override.y;
       groupRef.current.position.y = baseY + bob;
 
-      const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
-      const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
-      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
+      const runTargetX = targetX;
+      const runTargetZ = targetZ;
+      const preTurnY = Math.atan2(targetX - desiredX, targetZ - desiredZ);
       const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
       const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
       const desiredRotX = isPeopleMode ? peopleFinalRotX : 0;
@@ -375,8 +392,9 @@ function DraggableCharacter({
       groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
     } else {
       const smooth = isDragging.current ? 0.42 : 0.12;
-      const idleTargetX = !editMode && isPeopleMode ? lineupTarget.x : targetPosition.current.x;
-      const idleTargetZ = !editMode && isPeopleMode ? lineupTarget.z : targetPosition.current.z;
+      const lockToLineup = isPeopleMode && !useCustomLayout;
+      const idleTargetX = lockToLineup ? lineupTarget.x : targetPosition.current.x;
+      const idleTargetZ = lockToLineup ? lineupTarget.z : targetPosition.current.z;
       groupRef.current.position.x += (idleTargetX - groupRef.current.position.x) * smooth;
       groupRef.current.position.z += (idleTargetZ - groupRef.current.position.z) * smooth;
 
@@ -451,7 +469,7 @@ function DraggableCharacter({
     >
       <PrimitiveCharacter
         pose={isPeopleMode ? 'standing' : config.pose}
-        locomotion={isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
+        locomotion={isTransitioningVisual ? 'run' : isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
@@ -857,9 +875,10 @@ function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPr
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
   const xSpacing = safeColumns <= 2 ? 0.62 : 0.52;
-  const yStep = safeColumns === 1 ? 0.52 : 0.4;
+  const yStep = safeColumns === 1 ? 0.46 : 0.4;
   const x = (slot.xIndex - rowCenter) * xSpacing;
-  const y = 0.24 - slot.row * yStep;
+  const yStart = safeColumns === 1 ? 0.34 : 0.24;
+  const y = yStart - slot.row * yStep;
   return { x, y };
 }
 
@@ -953,6 +972,7 @@ export default function LandingScene3D({
   const runDurationSeconds = tuning.runDurationSeconds;
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
   const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
+  const [relayoutProgress, setRelayoutProgress] = useState(1);
   const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
   const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
@@ -1044,6 +1064,45 @@ export default function LandingScene3D({
 
 
 
+
+
+  const previousLayoutKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const layoutKey = `${activeLayoutPreset}:${activeLayoutColumns}`;
+
+    if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      previousLayoutKeyRef.current = layoutKey;
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const previousLayoutKey = previousLayoutKeyRef.current;
+    previousLayoutKeyRef.current = layoutKey;
+
+    // Do not rerun when entering People mode; only rerun when layout settings change while already in People.
+    if (previousLayoutKey === null || peopleTransitionProgress < 0.999 || previousLayoutKey === layoutKey) {
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const start = performance.now();
+    const duration = Math.max(0.01, tuning.runDurationSeconds);
+    let raf = 0;
+    setRelayoutProgress(0);
+
+    const tick = (time: number) => {
+      const t = Math.max(0, Math.min(1, (time - start) / (duration * 1000)));
+      setRelayoutProgress(t);
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+      }
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
+
   if (!isWebGLAvailable) {
     return null;
   }
@@ -1122,10 +1181,10 @@ export default function LandingScene3D({
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
-            effectiveTuning.cameraX,
-            effectiveTuning.cameraY,
-            effectiveTuning.cameraZ,
-            effectiveTuning.fov,
+            peopleTargetTuning.cameraX,
+            peopleTargetTuning.cameraY,
+            peopleTargetTuning.cameraZ,
+            peopleTargetTuning.fov,
           );
           const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
             x: projectedLineupTarget.x,
@@ -1143,7 +1202,7 @@ export default function LandingScene3D({
               ? { x: peopleOverride.x, z: peopleOverride.z }
               : projectedLineupTarget
             : projectedLineupTarget;
-          const activeOverride = useCustomLayout || (isPeopleMode && editMode) ? peopleOverride : homeOverride;
+          const activeOverride = isPeopleMode ? (useCustomLayout ? peopleOverride : homeOverride) : homeOverride;
 
           return (
             <group key={character.id}>
@@ -1179,6 +1238,10 @@ export default function LandingScene3D({
                 peopleFinalRotZ={peopleOverride.rotZ}
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
+                relayoutProgress={relayoutProgress}
+                relayoutActive={isPeopleMode && activeLayoutPreset !== 'custom' && relayoutProgress < 0.999}
+                isTransitioningVisual={relayoutProgress < 0.999 || (peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999)}
+                useCustomLayout={useCustomLayout}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
