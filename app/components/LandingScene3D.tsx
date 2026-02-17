@@ -44,6 +44,7 @@ export type SceneTuning = {
   preRunTurnSeconds: number;
   runDurationSeconds: number;
   peopleRunAnimationSpeed: number;
+  peopleLineupSpacing: number;
   characterOverrides: Record<string, ModelOverride>;
   peopleCharacterOverrides: Record<string, ModelOverride>;
   peopleViewTuning: PeopleViewTuning;
@@ -76,14 +77,14 @@ export type PeopleViewTuning = Pick<
 >;
 
 export const defaultSceneTuning: SceneTuning = {
-  cameraX: 7.6,
-  cameraY: 9.3,
-  cameraZ: 6.3,
-  fov: 60,
+  cameraX: 8.3,
+  cameraY: 9.8,
+  cameraZ: 6.4,
+  fov: 56,
   fogNear: 12,
   fogFar: 31,
   characterScale: 0.82,
-  sceneOffsetX: -8.5,
+  sceneOffsetX: -2.5,
   sceneOffsetY: 6,
   sceneWorldWidthPx: 3840,
   sceneWorldHeightPx: 2160,
@@ -97,20 +98,21 @@ export const defaultSceneTuning: SceneTuning = {
   preRunTurnSeconds: 0,
   runDurationSeconds: 0.5,
   peopleRunAnimationSpeed: 1.8,
+  peopleLineupSpacing: 0.36,
   characterOverrides: {
     alex: {
-      x: -3.1122954462698234,
+      x: -3.7972565501845343,
       y: -0.15,
-      z: -3.3427100339320726,
+      z: -3.856442489700469,
       scale: 1,
       rotX: 0.2,
       rotY: 0.52,
       rotZ: 0,
     },
     bea: {
-      x: -3.2145019891733897,
+      x: -2.947567159086291,
       y: -0.25,
-      z: -1.2391295954400698,
+      z: 0.24412264243779713,
       scale: 1,
       rotX: 0,
       rotY: -0.13,
@@ -135,9 +137,9 @@ export const defaultSceneTuning: SceneTuning = {
       rotZ: 0.13,
     },
     eli: {
-      x: 1.7881414864814607,
+      x: 2.367167062338794,
       y: -0.1,
-      z: -0.23296968787807204,
+      z: -0.27363210218138745,
       scale: 0.67,
       rotX: 0.1,
       rotY: 2.36,
@@ -193,9 +195,9 @@ export const defaultSceneTuning: SceneTuning = {
   },
   peopleViewTuning: {
     cameraX: 2,
-    cameraY: 7.4,
-    cameraZ: 11.4,
-    fov: 46,
+    cameraY: 8.9,
+    cameraZ: 8.3,
+    fov: 48,
     fogNear: 12,
     fogFar: 31,
     characterScale: 0.61,
@@ -224,13 +226,13 @@ export const defaultSceneTuning: SceneTuning = {
   },
   environmentOverrides: {
     pond: { x: -0.17114555377747376, y: -0.42, z: -7.562215471467024, scale: 3, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-1': { x: -6.487830093617572, y: -0.45, z: -0.16194185467417022, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-2': { x: -4.013044993582884, y: -0.45, z: -4.121256646007296, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-1': { x: -7.51394946956863, y: -0.45, z: 1.1474303587990686, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-2': { x: -4.479986239403276, y: -0.45, z: -4.700150995633615, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-3': { x: 0.9703599180581204, y: -0.45, z: 2.066643086549372, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-4': { x: 1.3835422089303613, y: -0.45, z: -2.238627927351077, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-5': { x: -4.265002239085487, y: -0.45, z: -1.0353432942222807, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-5': { x: -4.282255508950452, y: -0.45, z: 0.20798895550017327, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     sauna: { x: 3.32394602031734, y: -0.45, z: -3.0912259625868606, scale: 0.76, rotX: 0.02, rotY: 0.82, rotZ: 0 },
-    logs: { x: -4.710761635476089, y: 0, z: 2.1765379563757516, scale: 1, rotX: 0, rotY: 0.79, rotZ: 0 },
+    logs: { x: -5.193524079396518, y: 0, z: 3.8263431342249357, scale: 1, rotX: 0, rotY: 0.79, rotZ: 0 },
   },
 };
 
@@ -895,16 +897,23 @@ function getLineupTarget(index: number, total: number, columns = 3): { xIndex: n
   return { xIndex, row, itemsInRow };
 }
 
-function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPreset, columns: number): { x: number; y: number } {
+function getPeopleLayoutNdc(
+  index: number,
+  total: number,
+  preset: PeopleLayoutPreset,
+  columns: number,
+  spacing: number,
+): { x: number; y: number } {
   if (preset === 'custom') {
     return { x: 0, y: 0 };
   }
 
   const safeColumns = Math.max(1, Math.round(columns));
+  const safeSpacing = Math.max(0.2, Math.min(0.8, spacing));
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
-  const xSpacing = 0.44;
-  const yStep = 0.34;
+  const xSpacing = safeSpacing;
+  const yStep = safeSpacing * 0.77;
   const x = (slot.xIndex - rowCenter) * xSpacing;
   const yStart = 0.24;
   const y = yStart - slot.row * yStep;
@@ -1184,7 +1193,13 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
+          const layoutNdc = getPeopleLayoutNdc(
+            index,
+            orderedCharacters.length,
+            activeLayoutPreset,
+            activeLayoutColumns,
+            tuning.peopleLineupSpacing,
+          );
           const ndcX = layoutNdc.x;
           const ndcY = layoutNdc.y;
           const projectedLineupTarget = projectNdcToGround(
