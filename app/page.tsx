@@ -96,6 +96,8 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(900);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -137,6 +139,16 @@ export default function Home() {
     localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
   }, [sceneTuning]);
 
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsNarrowViewport(window.innerWidth < 920);
+      setViewportHeight(window.innerHeight);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
 
   const sceneCharacters = useMemo(
     () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
@@ -335,6 +347,14 @@ export default function Home() {
       updateCharacterOverride(selectedModelId, next);
     }
   }
+
+
+  const activePeoplePreset = isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset;
+  const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
+  const activePeopleRows = activePeoplePreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / activePeopleColumns);
+  const lowestCharacterNdcY = activePeoplePreset === 'custom' ? 0 : 0.24 - (activePeopleRows - 1) * 0.4;
+  const offscreenPixels = Math.max(0, ((-1 - lowestCharacterNdcY) / 2) * viewportHeight);
+  const peopleScrollSpacerPx = mode === 'people' ? Math.ceil(offscreenPixels + (offscreenPixels > 0 ? 100 : 0)) : 0;
 
   return (
     <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
@@ -539,6 +559,7 @@ export default function Home() {
         </ul>
       </section>
 
+      {peopleScrollSpacerPx > 0 && <div style={{ height: `${peopleScrollSpacerPx}px` }} aria-hidden="true" />}
 
       <div className="vignette" />
     </main>
