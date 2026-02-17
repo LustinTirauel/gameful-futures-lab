@@ -96,7 +96,6 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
-  const [peopleProjectedOverflowPx, setPeopleProjectedOverflowPx] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -159,7 +158,6 @@ export default function Home() {
     setMode(nextMode);
     setSelectedPerson(null);
     setSelectedProject(null);
-    if (nextMode !== 'people') setPeopleProjectedOverflowPx(0);
   }
 
   function handleCharacterClick(personId: string) {
@@ -338,13 +336,8 @@ export default function Home() {
     }
   }
 
-
-  const peopleExtraCanvasHeightPx = mode === 'people' ? peopleProjectedOverflowPx : 0;
-  const peopleScrollSpacerPx = peopleExtraCanvasHeightPx > 0 ? peopleExtraCanvasHeightPx + 120 : 0;
-
-
   return (
-    <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
+    <main className="main">
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
@@ -359,8 +352,6 @@ export default function Home() {
           onFireOverrideChange={updateFireOverride}
           onEnvironmentOverrideChange={updateEnvironmentOverride}
           onCharacterActivate={handleCharacterSelect}
-          peopleExtraCanvasHeightPx={peopleExtraCanvasHeightPx}
-          onPeopleOverflowPxChange={setPeopleProjectedOverflowPx}
         />
       )}
 
@@ -547,9 +538,6 @@ export default function Home() {
           <li>People tag filters with "run away" behavior</li>
         </ul>
       </section>
-
-      {peopleScrollSpacerPx > 0 && <div style={{ height: `${peopleScrollSpacerPx}px` }} aria-hidden="true" />}
-
       <div className="vignette" />
     </main>
   );
