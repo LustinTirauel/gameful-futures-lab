@@ -327,7 +327,19 @@ a { color: inherit; text-decoration: none; }
 .main.main-people {
   height: 100vh;
   overflow-y: auto;
-}
+
+.canvas-debug {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 42;
+  background: rgba(0, 0, 0, 0.75);
+  color: #d9f4dc;
+  border: 1px solid #44694a;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
 
 .canvas-debug {

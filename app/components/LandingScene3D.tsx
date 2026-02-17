@@ -255,6 +255,11 @@ type LandingScene3DProps = {
   onCanvasDebugSizeChange?: (size: { widthPx: number; heightPx: number }) => void;
   peopleScrollProgress?: number;
   peopleCutoffBufferPx?: number;
+  peopleExtraCanvasHeightPx?: number;
+  onPeopleOverflowPxChange?: (overflowPx: number) => void;
+  onCanvasDebugSizeChange?: (size: { widthPx: number; heightPx: number }) => void;
+  peopleScrollProgress?: number;
+  peopleCutoffBufferPx?: number;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -876,11 +881,23 @@ function EnvironmentProps({
           <sphereGeometry args={[0.9, 12, 12]} />
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
-      ))}
+  const xSpacing = 0.52;
+  const yStep = 0.4;
+  const yStart = 0.24;
 
-      {editMode && selectedModelId && selectedModelId in resolved && (
-        <mesh position={[resolved[selectedModelId].pos[0], resolved[selectedModelId].pos[1] + 1.2, resolved[selectedModelId].pos[2]]}>
-          <sphereGeometry args={[0.08, 12, 12]} />
+  peopleExtraCanvasHeightPx = 0,
+  onPeopleOverflowPxChange,
+  onCanvasDebugSizeChange,
+  peopleScrollProgress = 0,
+  peopleCutoffBufferPx = 100,
+  const [viewportHeightPx, setViewportHeightPx] = useState(900);
+    const update = () => {
+      setIsNarrowViewport(window.innerWidth < 920);
+      setViewportHeightPx(window.innerHeight);
+    };
+    sceneOffsetY:
+      lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress) -
+      (isPeopleMode ? (peopleScrollProgress * peopleExtraCanvasHeightPx) / Math.max(1, viewportHeightPx) * 100 : 0),
           <meshBasicMaterial color="#9de6a4" />
         </mesh>
       )}
@@ -1100,6 +1117,126 @@ export default function LandingScene3D({
 
 
 
+
+
+  useEffect(() => {
+    if (!onPeopleOverflowPxChange) return;
+
+    if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      onPeopleOverflowPxChange(0);
+      return;
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const sceneWidthPx = (canvasScalePercent / 100) * viewportWidth;
+    const sceneHeightPx = (sceneHeightPercent / 100) * viewportHeight;
+    const sceneTopPx =
+      (canvasInsetPercent / 100) * viewportHeight + (effectiveTuning.sceneOffsetY / 100) * sceneHeightPx;
+
+    const projectionCamera = new PerspectiveCamera(
+      effectiveTuning.fov,
+      Math.max(0.1, sceneWidthPx / Math.max(1, sceneHeightPx)),
+      0.1,
+      1000,
+    );
+    projectionCamera.position.set(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ);
+    projectionCamera.lookAt(0, 0, 0);
+    projectionCamera.updateProjectionMatrix();
+    projectionCamera.updateMatrixWorld();
+
+    let maxNameplateBottomPx = -Infinity;
+
+    orderedCharacters.forEach((character, index) => {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+        rotX: baseRotX,
+        rotY: baseRotY,
+        rotZ: baseRotZ,
+      };
+
+      const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+        x: projectedLineupTarget.x,
+        y: homeOverride.y,
+        z: projectedLineupTarget.z,
+        scale: homeOverride.scale,
+        rotX: 0,
+        rotY: southFacingY,
+        rotZ: 0,
+      };
+      const lineupTarget = projectedLineupTarget;
+
+      const nameplateWorld = new Vector3(
+        lineupTarget.x + Math.sin(southFacingY) * 0.56,
+        -0.42,
+        lineupTarget.z + Math.cos(southFacingY) * 0.56,
+      );
+      const projected = nameplateWorld.project(projectionCamera);
+      const nameplateScreenY = sceneTopPx + ((-projected.y + 1) / 2) * sceneHeightPx;
+      maxNameplateBottomPx = Math.max(maxNameplateBottomPx, nameplateScreenY);
+    });
+
+    if (!Number.isFinite(maxNameplateBottomPx)) {
+      onPeopleOverflowPxChange(0);
+      return;
+    }
+
+    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - viewportHeight + peopleCutoffBufferPx));
+    onPeopleOverflowPxChange(overflowPx);
+  }, [
+    onPeopleOverflowPxChange,
+    isPeopleMode,
+    activeLayoutPreset,
+    activeLayoutColumns,
+    canvasScalePercent,
+    canvasInsetPercent,
+    sceneHeightPercent,
+    effectiveTuning.sceneOffsetX,
+    effectiveTuning.sceneOffsetY,
+    effectiveTuning.cameraX,
+    effectiveTuning.cameraY,
+    effectiveTuning.cameraZ,
+    effectiveTuning.fov,
+    orderedCharacters,
+    tuning.characterOverrides,
+    tuning.peopleCharacterOverrides,
+    peopleTargetTuning.cameraX,
+    peopleTargetTuning.cameraY,
+    peopleTargetTuning.cameraZ,
+    peopleTargetTuning.fov,
+    southFacingY,
+    peopleCutoffBufferPx,
+  ]);
+
+  useEffect(() => {
+    if (!onCanvasDebugSizeChange) return;
+
+    const updateSize = () => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const widthPx = (canvasScalePercent / 100) * viewportWidth;
+      const heightPx = (sceneHeightPercent / 100) * viewportHeight;
+      onCanvasDebugSizeChange({ widthPx: Math.round(widthPx), heightPx: Math.round(heightPx) });
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [onCanvasDebugSizeChange, canvasScalePercent, sceneHeightPercent]);
 
   const [, setRelayoutProgress] = useState(1);
   const previousLayoutKeyRef = useRef<string | null>(null);

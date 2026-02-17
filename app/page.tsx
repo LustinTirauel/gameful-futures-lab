@@ -100,6 +100,17 @@ export default function Home() {
   const [canvasDebugSize, setCanvasDebugSize] = useState<{ widthPx: number; heightPx: number } | null>(null);
   const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
   const [peopleCutoffBufferPx, setPeopleCutoffBufferPx] = useState(100);
+  const mainRef = useRef<HTMLElement | null>(null);
+    const updateViewport = () => setIsNarrowViewport(window.innerWidth < 920);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+
+    if (nextMode !== 'people') {
+      setPeopleProjectedOverflowPx(0);
+      setCanvasDebugSize(null);
+      setPeopleScrollProgress(0);
+    }
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const mainRef = useRef<HTMLElement | null>(null);
 
@@ -320,11 +331,42 @@ export default function Home() {
     });
   }
 
-  function updateEnvironmentOverride(modelId: string, nextOverride: ModelOverride) {
-    setSceneTuning((current) => ({
-      ...current,
-      environmentOverrides: {
-        ...current.environmentOverrides,
+
+  const activePeopleRows = Math.ceil(sceneCharacters.length / activePeopleColumns);
+  const fallbackOverflowPx = mode === 'people' ? Math.max(0, (activePeopleRows - 2) * 220) : 0;
+  const peopleExtraCanvasHeightPx = mode === 'people' ? Math.max(peopleProjectedOverflowPx, fallbackOverflowPx) : 0;
+  const peopleScrollSpacerPx = peopleExtraCanvasHeightPx > 0 ? peopleExtraCanvasHeightPx + 120 : 0;
+
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    if (!mainEl || mode !== 'people' || peopleScrollSpacerPx <= 0) {
+      setPeopleScrollProgress(0);
+      return;
+    }
+
+    const update = () => {
+      const maxScroll = Math.max(1, mainEl.scrollHeight - mainEl.clientHeight);
+      const next = Math.max(0, Math.min(1, mainEl.scrollTop / maxScroll));
+      setPeopleScrollProgress(next);
+    };
+
+    update();
+    mainEl.addEventListener('scroll', update, { passive: true });
+    return () => mainEl.removeEventListener('scroll', update);
+  }, [mode, peopleScrollSpacerPx]);
+
+    <main ref={mainRef} className={`main ${mode === 'people' ? 'main-people' : ''}`}>
+          peopleExtraCanvasHeightPx={peopleExtraCanvasHeightPx}
+          onPeopleOverflowPxChange={setPeopleProjectedOverflowPx}
+          onCanvasDebugSizeChange={setCanvasDebugSize}
+          peopleScrollProgress={peopleScrollProgress}
+          peopleCutoffBufferPx={peopleCutoffBufferPx}
+      {mode === 'people' && canvasDebugSize && (
+        <div className="canvas-debug" aria-live="polite">
+          canvas: {canvasDebugSize.widthPx}px × {canvasDebugSize.heightPx}px · overflow: {peopleProjectedOverflowPx}px (fallback {fallbackOverflowPx}px) · buffer: {peopleCutoffBufferPx}px · scroll: {(peopleScrollProgress * 100).toFixed(0)}%
+        </div>
+      )}
+
         [modelId]: nextOverride,
       },
     }));
@@ -437,6 +479,19 @@ export default function Home() {
                     <input
                       type="color"
                       value={sceneTuning.peopleHueColor}
+
+                  <label>
+                    <span>People cutoff buffer (px)</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={600}
+                      step={10}
+                      value={peopleCutoffBufferPx}
+                      onChange={(event) => setPeopleCutoffBufferPx(Number(event.target.value))}
+                    />
+                    <strong>{peopleCutoffBufferPx.toFixed(0)} px</strong>
+                  </label>
                       onChange={(event) => handlePeopleHueColorChange(event.target.value)}
                     />
                   </label>
@@ -527,7 +582,7 @@ export default function Home() {
                   <div className="tuning-fields">
                     {modelFields.map((field) => (
                       <label key={field.key}>
-                        <span>{field.key.toUpperCase()}</span>
+      {peopleScrollSpacerPx > 0 && <div style={{ height: `${peopleScrollSpacerPx}px` }} aria-hidden="true" />}
                         <input
                           type="range"
                           min={field.min}
