@@ -96,7 +96,7 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
-  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [peopleProjectedOverflowPx, setPeopleProjectedOverflowPx] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -138,12 +138,6 @@ export default function Home() {
     localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
   }, [sceneTuning]);
 
-  useEffect(() => {
-    const update = () => setIsNarrowViewport(window.innerWidth < 920);
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
 
   const sceneCharacters = useMemo(
     () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
@@ -165,6 +159,7 @@ export default function Home() {
     setMode(nextMode);
     setSelectedPerson(null);
     setSelectedProject(null);
+    if (nextMode !== 'people') setPeopleProjectedOverflowPx(0);
   }
 
   function handleCharacterClick(personId: string) {
@@ -343,14 +338,13 @@ export default function Home() {
     }
   }
 
-  const activePeoplePreset = isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset;
-  const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
-  const activePeopleRows = activePeoplePreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / activePeopleColumns);
-  const peopleNeedsScroll = mode === 'people' && activePeoplePreset !== 'custom' && activePeopleRows > 2;
-  const peopleScrollSpacerVh = peopleNeedsScroll ? Math.min(260, 70 + (activePeopleRows - 2) * 44) : 0;
+
+  const peopleExtraCanvasHeightPx = mode === 'people' ? peopleProjectedOverflowPx : 0;
+  const peopleScrollSpacerPx = peopleExtraCanvasHeightPx > 0 ? peopleExtraCanvasHeightPx + 120 : 0;
+
 
   return (
-    <main className={`main ${mode === 'people' ? (peopleNeedsScroll ? 'main-people main-people-scroll' : 'main-people') : ''}`}>
+    <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
@@ -365,6 +359,8 @@ export default function Home() {
           onFireOverrideChange={updateFireOverride}
           onEnvironmentOverrideChange={updateEnvironmentOverride}
           onCharacterActivate={handleCharacterSelect}
+          peopleExtraCanvasHeightPx={peopleExtraCanvasHeightPx}
+          onPeopleOverflowPxChange={setPeopleProjectedOverflowPx}
         />
       )}
 
@@ -552,7 +548,7 @@ export default function Home() {
         </ul>
       </section>
 
-      {peopleNeedsScroll && <div style={{ height: `${peopleScrollSpacerVh}vh` }} aria-hidden="true" />}
+      {peopleScrollSpacerPx > 0 && <div style={{ height: `${peopleScrollSpacerPx}px` }} aria-hidden="true" />}
 
       <div className="vignette" />
     </main>

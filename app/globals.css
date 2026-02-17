@@ -325,9 +325,6 @@ a { color: inherit; text-decoration: none; }
 
 
 .main.main-people {
-  overflow-y: hidden;
-}
-
-.main.main-people.main-people-scroll {
   overflow-y: auto;
 }
+
