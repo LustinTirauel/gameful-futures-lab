@@ -254,7 +254,28 @@ type LandingScene3DProps = {
   onEnvironmentOverrideChange?: (modelId: string, override: ModelOverride) => void;
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
+  onViewportHeightRequired?: (heightVh: number) => void;
 };
+
+function projectWorldToNdc(
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+  cameraX: number,
+  cameraY: number,
+  cameraZ: number,
+  fov: number,
+  aspect: number,
+): { x: number; y: number; z: number } {
+  const camera = new PerspectiveCamera(fov, aspect, 0.1, 1000);
+  camera.position.set(cameraX, cameraY, cameraZ);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+
+  const point = new Vector3(worldX, worldY, worldZ).project(camera);
+  return { x: point.x, y: point.y, z: point.z };
+}
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
   const { camera } = useThree();
@@ -968,6 +989,7 @@ export default function LandingScene3D({
   onFireOverrideChange,
   onEnvironmentOverrideChange,
   onCharacterActivate,
+  onViewportHeightRequired,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1125,6 +1147,119 @@ export default function LandingScene3D({
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const aspect = tuning.sceneWorldWidthPx / tuning.sceneWorldHeightPx;
+    const viewportHeightPx = window.innerHeight * (tuning.sceneViewportHeightVh / 100);
+    const worldTopPx =
+      window.innerHeight * 0.5 +
+      (-0.5 + effectiveTuning.sceneOffsetY / 100) * tuning.sceneWorldHeightPx;
+
+    let maxCharacterBottomPx = Number.NEGATIVE_INFINITY;
+
+    for (const [index, character] of orderedCharacters.entries()) {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+        rotX: baseRotX,
+        rotY: baseRotY,
+        rotZ: baseRotZ,
+      };
+
+      const layoutNdc = getPeopleLayoutNdc(
+        index,
+        orderedCharacters.length,
+        activeLayoutPreset,
+        activeLayoutColumns,
+        tuning.peopleLineupSpacing,
+      );
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const peopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+        x: projectedLineupTarget.x,
+        y: homeOverride.y,
+        z: projectedLineupTarget.z,
+        scale: homeOverride.scale,
+        rotX: 0,
+        rotY: southFacingY,
+        rotZ: 0,
+      };
+
+      const useCustomLayout = isPeopleMode && activeLayoutPreset === 'custom';
+      const targetX = isPeopleMode
+        ? useCustomLayout
+          ? peopleOverride.x
+          : projectedLineupTarget.x
+        : homeOverride.x;
+      const targetY = isPeopleMode ? peopleOverride.y : homeOverride.y;
+      const targetZ = isPeopleMode
+        ? useCustomLayout
+          ? peopleOverride.z
+          : projectedLineupTarget.z
+        : homeOverride.z;
+
+      const ndc = projectWorldToNdc(
+        targetX,
+        targetY,
+        targetZ,
+        effectiveTuning.cameraX,
+        effectiveTuning.cameraY,
+        effectiveTuning.cameraZ,
+        effectiveTuning.fov,
+        aspect,
+      );
+
+      const canvasY = (1 - (ndc.y + 1) / 2) * tuning.sceneWorldHeightPx;
+      const screenY = worldTopPx + canvasY;
+      if (Number.isFinite(screenY)) {
+        maxCharacterBottomPx = Math.max(maxCharacterBottomPx, screenY);
+      }
+    }
+
+    if (!Number.isFinite(maxCharacterBottomPx)) return;
+
+    const paddingPx = 32;
+    const requiredHeightPx = Math.max(viewportHeightPx, maxCharacterBottomPx + paddingPx);
+    const requiredVh = Math.min(300, Math.max(100, Math.ceil((requiredHeightPx / window.innerHeight) * 100)));
+
+    if (requiredVh > tuning.sceneViewportHeightVh) {
+      onViewportHeightRequired?.(requiredVh);
+    }
+  }, [
+    activeLayoutColumns,
+    activeLayoutPreset,
+    effectiveTuning.cameraX,
+    effectiveTuning.cameraY,
+    effectiveTuning.cameraZ,
+    effectiveTuning.fov,
+    effectiveTuning.sceneOffsetY,
+    isPeopleMode,
+    onViewportHeightRequired,
+    orderedCharacters,
+    peopleTargetTuning.cameraX,
+    peopleTargetTuning.cameraY,
+    peopleTargetTuning.cameraZ,
+    peopleTargetTuning.fov,
+    southFacingY,
+    tuning.characterOverrides,
+    tuning.peopleCharacterOverrides,
+    tuning.peopleLineupSpacing,
+    tuning.sceneViewportHeightVh,
+    tuning.sceneWorldHeightPx,
+    tuning.sceneWorldWidthPx,
+  ]);
 
 
   if (!isWebGLAvailable) {

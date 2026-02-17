@@ -336,6 +336,19 @@ export default function Home() {
     }
   }
 
+  function handleViewportHeightRequired(requiredVh: number) {
+    setSceneTuning((current) => {
+      if (requiredVh <= current.sceneViewportHeightVh) {
+        return current;
+      }
+
+      return {
+        ...current,
+        sceneViewportHeightVh: Math.min(300, Math.max(current.sceneViewportHeightVh, requiredVh)),
+      };
+    });
+  }
+
   return (
     <main className="main" style={{ minHeight: `${Math.max(100, sceneTuning.sceneViewportHeightVh)}vh` }}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
@@ -353,6 +366,7 @@ export default function Home() {
             onFireOverrideChange={updateFireOverride}
             onEnvironmentOverrideChange={updateEnvironmentOverride}
             onCharacterActivate={handleCharacterSelect}
+            onViewportHeightRequired={handleViewportHeightRequired}
           />
         </div>
       )}
