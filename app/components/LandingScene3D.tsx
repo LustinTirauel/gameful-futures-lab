@@ -278,8 +278,9 @@ function DraggableCharacter({
   lineupTarget,
   isPeopleMode,
   southFacingY,
-  isPreRunTurning,
+  preTurnShare,
   peopleTransitionProgress,
+  totalTransitionSeconds,
   peopleFinalRotX,
   peopleFinalRotY,
   peopleFinalRotZ,
@@ -300,8 +301,9 @@ function DraggableCharacter({
   lineupTarget: { x: number; z: number };
   isPeopleMode: boolean;
   southFacingY: number;
-  isPreRunTurning: boolean;
+  preTurnShare: number;
   peopleTransitionProgress: number;
+  totalTransitionSeconds: number;
   peopleFinalRotX: number;
   peopleFinalRotY: number;
   peopleFinalRotZ: number;
@@ -319,13 +321,19 @@ function DraggableCharacter({
   const isDragging = useRef(false);
   const hasArrivedRef = useRef(false);
   const [isRunningInPeople, setIsRunningInPeople] = useState(false);
+  const [layoutTransitionProgress, setLayoutTransitionProgress] = useState(1);
+  const [isLayoutTransitioning, setIsLayoutTransitioning] = useState(false);
 
   useEffect(() => {
     targetPosition.current = { x: override.x, z: override.z };
   }, [override.x, override.z]);
 
   useEffect(() => {
-    if (editMode) return;
+    if (editMode || !isPeopleMode) {
+      setLayoutTransitionProgress(1);
+      setIsLayoutTransitioning(false);
+      return;
+    }
 
     const currentX = groupRef.current?.position.x ?? override.x;
     const currentZ = groupRef.current?.position.z ?? override.z;
@@ -333,27 +341,50 @@ function DraggableCharacter({
     hasArrivedRef.current = false;
     onArrivalChange?.(id, false);
     setIsRunningInPeople(false);
-  }, [id, isPeopleMode, editMode, override.x, override.z, lineupTarget.x, lineupTarget.z]);
+    setLayoutTransitionProgress(0);
+    setIsLayoutTransitioning(true);
+
+    const durationMs = Math.max(10, totalTransitionSeconds * 1000);
+    const start = performance.now();
+    let raf = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.max(0, Math.min(1, (now - start) / durationMs));
+      setLayoutTransitionProgress(progress);
+      if (progress < 1) {
+        raf = window.requestAnimationFrame(tick);
+      } else {
+        setIsLayoutTransitioning(false);
+      }
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [id, isPeopleMode, editMode, lineupTarget.x, lineupTarget.z, override.x, override.z, totalTransitionSeconds, onArrivalChange]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
-    const inPeopleTransition = !editMode && (isPeopleMode || peopleTransitionProgress > 0.001);
+    const useLayoutTransition = isPeopleMode && peopleTransitionProgress >= 0.999 && isLayoutTransitioning;
+    const transitionProgress = useLayoutTransition ? layoutTransitionProgress : peopleTransitionProgress;
+    const transitionStart = useLayoutTransition ? peopleStartPosition.current : { x: override.x, z: override.z };
+    const inPeopleTransition = !editMode && (isPeopleMode || transitionProgress > 0.001);
 
     if (inPeopleTransition) {
-      const desiredX = override.x + (lineupTarget.x - override.x) * peopleTransitionProgress;
-      const desiredZ = override.z + (lineupTarget.z - override.z) * peopleTransitionProgress;
+      const desiredX = transitionStart.x + (lineupTarget.x - transitionStart.x) * transitionProgress;
+      const desiredZ = transitionStart.z + (lineupTarget.z - transitionStart.z) * transitionProgress;
 
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const hasArrived = isPeopleMode && !isPreRunTurning && peopleTransitionProgress >= 0.999;
+      const isPreRunTurning = isPeopleMode && transitionProgress < preTurnShare;
+      const hasArrived = isPeopleMode && !isPreRunTurning && transitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = !isPreRunTurning && peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
+      const isRunningNow = !isPreRunTurning && transitionProgress > 0.001 && transitionProgress < 0.999;
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -948,7 +979,6 @@ export default function LandingScene3D({
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
   const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
   const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
-  const isPreRunTurning = isPeopleMode && peopleTransitionProgress < preTurnShare;
 
   const peopleTargetTuning = tuning.peopleViewTuning;
 
@@ -1166,8 +1196,9 @@ export default function LandingScene3D({
                 lineupTarget={lineupTarget}
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
-                isPreRunTurning={isPreRunTurning}
+                preTurnShare={preTurnShare}
                 peopleTransitionProgress={peopleTransitionProgress}
+                totalTransitionSeconds={totalTransitionSeconds}
                 peopleFinalRotX={peopleOverride.rotX}
                 peopleFinalRotY={peopleOverride.rotY}
                 peopleFinalRotZ={peopleOverride.rotZ}
