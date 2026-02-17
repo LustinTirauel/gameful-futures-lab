@@ -1141,10 +1141,10 @@ export default function LandingScene3D({
           const projectedLineupTarget = projectNdcToGround(
             ndcX,
             ndcY,
-            effectiveTuning.cameraX,
-            effectiveTuning.cameraY,
-            effectiveTuning.cameraZ,
-            effectiveTuning.fov,
+            peopleTargetTuning.cameraX,
+            peopleTargetTuning.cameraY,
+            peopleTargetTuning.cameraZ,
+            peopleTargetTuning.fov,
           );
           const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
             x: projectedLineupTarget.x,
