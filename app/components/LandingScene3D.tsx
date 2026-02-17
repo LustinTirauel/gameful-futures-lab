@@ -278,7 +278,6 @@ function DraggableCharacter({
   lineupTarget,
   isPeopleMode,
   southFacingY,
-  preTurnShare,
   peopleTransitionProgress,
   totalTransitionSeconds,
   peopleFinalRotX,
@@ -301,7 +300,6 @@ function DraggableCharacter({
   lineupTarget: { x: number; z: number };
   isPeopleMode: boolean;
   southFacingY: number;
-  preTurnShare: number;
   peopleTransitionProgress: number;
   totalTransitionSeconds: number;
   peopleFinalRotX: number;
@@ -377,14 +375,13 @@ function DraggableCharacter({
       groupRef.current.position.x = desiredX;
       groupRef.current.position.z = desiredZ;
 
-      const isPreRunTurning = isPeopleMode && transitionProgress < preTurnShare;
-      const hasArrived = isPeopleMode && !isPreRunTurning && transitionProgress >= 0.999;
+      const hasArrived = isPeopleMode && transitionProgress >= 0.999;
       if (hasArrived !== hasArrivedRef.current) {
         hasArrivedRef.current = hasArrived;
         onArrivalChange?.(id, hasArrived);
       }
 
-      const isRunningNow = !isPreRunTurning && transitionProgress > 0.001 && transitionProgress < 0.999;
+      const isRunningNow = transitionProgress > 0.001 && transitionProgress < 0.999;
       if (isRunningNow !== isRunningInPeople) {
         setIsRunningInPeople(isRunningNow);
       }
@@ -395,9 +392,8 @@ function DraggableCharacter({
 
       const runTargetX = isPeopleMode ? lineupTarget.x : override.x;
       const runTargetZ = isPeopleMode ? lineupTarget.z : override.z;
-      const preTurnY = Math.atan2(lineupTarget.x - desiredX, lineupTarget.z - desiredZ);
       const runDirectionY = Math.atan2(runTargetX - desiredX, runTargetZ - desiredZ);
-      const desiredRotY = isPreRunTurning ? preTurnY : isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
+      const desiredRotY = isRunningNow ? runDirectionY : isPeopleMode ? peopleFinalRotY : override.rotY;
       const desiredRotX = isPeopleMode ? peopleFinalRotX : 0;
       const desiredRotZ = isPeopleMode ? peopleFinalRotZ : 0;
 
@@ -978,7 +974,6 @@ export default function LandingScene3D({
   const runDurationSeconds = tuning.runDurationSeconds;
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
   const [peopleTransitionProgress, setPeopleTransitionProgress] = useState(0);
-  const preTurnShare = totalTransitionSeconds <= 0 ? 0 : preRunTurnSeconds / totalTransitionSeconds;
 
   const peopleTargetTuning = tuning.peopleViewTuning;
 
@@ -1196,7 +1191,6 @@ export default function LandingScene3D({
                 lineupTarget={lineupTarget}
                 isPeopleMode={isPeopleMode}
                 southFacingY={southFacingY}
-                preTurnShare={preTurnShare}
                 peopleTransitionProgress={peopleTransitionProgress}
                 totalTransitionSeconds={totalTransitionSeconds}
                 peopleFinalRotX={peopleOverride.rotX}
