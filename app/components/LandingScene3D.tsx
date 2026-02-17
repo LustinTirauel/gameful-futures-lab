@@ -253,6 +253,7 @@ type LandingScene3DProps = {
   peopleExtraCanvasHeightPx?: number;
   onPeopleOverflowPxChange?: (overflowPx: number) => void;
   onCanvasDebugSizeChange?: (size: { widthPx: number; heightPx: number }) => void;
+  peopleScrollProgress?: number;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -963,6 +964,7 @@ export default function LandingScene3D({
   peopleExtraCanvasHeightPx = 0,
   onPeopleOverflowPxChange,
   onCanvasDebugSizeChange,
+  peopleScrollProgress = 0,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -989,9 +991,13 @@ export default function LandingScene3D({
 
   const isPeopleMode = mode === 'people';
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [viewportHeightPx, setViewportHeightPx] = useState(900);
 
   useEffect(() => {
-    const update = () => setIsNarrowViewport(window.innerWidth < 920);
+    const update = () => {
+      setIsNarrowViewport(window.innerWidth < 920);
+      setViewportHeightPx(window.innerHeight);
+    };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -1012,7 +1018,9 @@ export default function LandingScene3D({
     fogFar: lerpNumber(tuning.fogFar, peopleTargetTuning.fogFar, peopleTransitionProgress),
     characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
     sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleTargetTuning.sceneOffsetX, peopleTransitionProgress),
-    sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress),
+    sceneOffsetY:
+      lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress) -
+      (isPeopleMode ? (peopleScrollProgress * peopleExtraCanvasHeightPx) / Math.max(1, viewportHeightPx) * 100 : 0),
     sceneCanvasScale: lerpNumber(
       tuning.sceneCanvasScale,
       peopleTargetTuning.sceneCanvasScale,
@@ -1038,7 +1046,6 @@ export default function LandingScene3D({
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
   const sceneHeightPercent = canvasScalePercent;
-  const sceneExtraHeightPx = isPeopleMode ? Math.max(0, peopleExtraCanvasHeightPx) : 0;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1142,7 +1149,7 @@ export default function LandingScene3D({
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const sceneWidthPx = (canvasScalePercent / 100) * viewportWidth;
-    const sceneHeightPx = (sceneHeightPercent / 100) * viewportHeight + sceneExtraHeightPx;
+    const sceneHeightPx = (sceneHeightPercent / 100) * viewportHeight;
 
     const projectionCamera = new PerspectiveCamera(
       effectiveTuning.fov,
@@ -1215,7 +1222,6 @@ export default function LandingScene3D({
     canvasScalePercent,
     canvasInsetPercent,
     sceneHeightPercent,
-    sceneExtraHeightPx,
     effectiveTuning.sceneOffsetX,
     effectiveTuning.sceneOffsetY,
     effectiveTuning.cameraX,
@@ -1239,14 +1245,14 @@ export default function LandingScene3D({
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const widthPx = (canvasScalePercent / 100) * viewportWidth;
-      const heightPx = (sceneHeightPercent / 100) * viewportHeight + sceneExtraHeightPx;
+      const heightPx = (sceneHeightPercent / 100) * viewportHeight;
       onCanvasDebugSizeChange({ widthPx: Math.round(widthPx), heightPx: Math.round(heightPx) });
     };
 
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
-  }, [onCanvasDebugSizeChange, canvasScalePercent, sceneHeightPercent, sceneExtraHeightPx]);
+  }, [onCanvasDebugSizeChange, canvasScalePercent, sceneHeightPercent]);
 
   if (!isWebGLAvailable) {
     return null;
@@ -1257,7 +1263,7 @@ export default function LandingScene3D({
       className="scene-layer"
       style={{
         width: `${canvasScalePercent}%`,
-        height: `calc(${sceneHeightPercent}% + ${sceneExtraHeightPx}px)`,
+        height: `${sceneHeightPercent}%`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
         transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,

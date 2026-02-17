@@ -98,6 +98,7 @@ export default function Home() {
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
   const [peopleProjectedOverflowPx, setPeopleProjectedOverflowPx] = useState(0);
   const [canvasDebugSize, setCanvasDebugSize] = useState<{ widthPx: number; heightPx: number } | null>(null);
+  const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -163,6 +164,7 @@ export default function Home() {
     if (nextMode !== 'people') {
       setPeopleProjectedOverflowPx(0);
       setCanvasDebugSize(null);
+      setPeopleScrollProgress(0);
     }
   }
 
@@ -346,6 +348,24 @@ export default function Home() {
   const peopleExtraCanvasHeightPx = mode === 'people' ? peopleProjectedOverflowPx : 0;
   const peopleScrollSpacerPx = peopleExtraCanvasHeightPx > 0 ? peopleExtraCanvasHeightPx + 120 : 0;
 
+  useEffect(() => {
+    if (mode !== 'people' || peopleScrollSpacerPx <= 0) {
+      setPeopleScrollProgress(0);
+      return;
+    }
+
+    const update = () => {
+      const doc = document.documentElement;
+      const maxScroll = Math.max(1, doc.scrollHeight - window.innerHeight);
+      const next = Math.max(0, Math.min(1, window.scrollY / maxScroll));
+      setPeopleScrollProgress(next);
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, [mode, peopleScrollSpacerPx]);
+
 
   return (
     <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
@@ -366,6 +386,7 @@ export default function Home() {
           peopleExtraCanvasHeightPx={peopleExtraCanvasHeightPx}
           onPeopleOverflowPxChange={setPeopleProjectedOverflowPx}
           onCanvasDebugSizeChange={setCanvasDebugSize}
+          peopleScrollProgress={peopleScrollProgress}
         />
       )}
 
