@@ -1186,10 +1186,7 @@ export default function LandingScene3D({
         rotY: southFacingY,
         rotZ: 0,
       };
-      const useCustomLayout = activeLayoutPreset === 'custom';
-      const lineupTarget = useCustomLayout
-        ? { x: rawPeopleOverride.x, z: rawPeopleOverride.z }
-        : projectedLineupTarget;
+      const lineupTarget = projectedLineupTarget;
 
       const nameplateWorld = new Vector3(
         lineupTarget.x + Math.sin(southFacingY) * 0.56,
