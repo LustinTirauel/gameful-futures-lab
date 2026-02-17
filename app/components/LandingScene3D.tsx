@@ -426,7 +426,13 @@ function DraggableCharacter({
   const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
   const isSceneTransitionActive = peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
   const shouldUseStandingPose = isPeopleMode || isSceneTransitionActive;
-  const effectiveLocomotion = isRunningInPeople ? 'run' : isPeopleMode ? 'idle' : movementBehavior;
+  const effectiveLocomotion = isSceneTransitionActive
+    ? 'run'
+    : isRunningInPeople
+      ? 'run'
+      : isPeopleMode
+        ? 'idle'
+        : movementBehavior;
 
   return (
     <group
