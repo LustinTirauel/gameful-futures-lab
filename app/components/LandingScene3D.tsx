@@ -1084,6 +1084,7 @@ export default function LandingScene3D({
 
 
 
+  const [, setRelayoutProgress] = useState(1);
   const previousLayoutKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
