@@ -325,6 +325,7 @@ a { color: inherit; text-decoration: none; }
 
 
 .main.main-people {
+  height: 100vh;
   overflow-y: auto;
 }
 

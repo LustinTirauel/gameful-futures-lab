@@ -1152,6 +1152,8 @@ export default function LandingScene3D({
     const viewportHeight = window.innerHeight;
     const sceneWidthPx = (canvasScalePercent / 100) * viewportWidth;
     const sceneHeightPx = (sceneHeightPercent / 100) * viewportHeight;
+    const sceneTopPx =
+      (canvasInsetPercent / 100) * viewportHeight + (effectiveTuning.sceneOffsetY / 100) * sceneHeightPx;
 
     const projectionCamera = new PerspectiveCamera(
       effectiveTuning.fov,
@@ -1205,7 +1207,7 @@ export default function LandingScene3D({
         lineupTarget.z + Math.cos(southFacingY) * 0.56,
       );
       const projected = nameplateWorld.project(projectionCamera);
-      const nameplateScreenY = ((-projected.y + 1) / 2) * sceneHeightPx;
+      const nameplateScreenY = sceneTopPx + ((-projected.y + 1) / 2) * sceneHeightPx;
       maxNameplateBottomPx = Math.max(maxNameplateBottomPx, nameplateScreenY);
     });
 
@@ -1214,7 +1216,7 @@ export default function LandingScene3D({
       return;
     }
 
-    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - sceneHeightPx + peopleCutoffBufferPx));
+    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - viewportHeight + peopleCutoffBufferPx));
     onPeopleOverflowPxChange(overflowPx);
   }, [
     onPeopleOverflowPxChange,

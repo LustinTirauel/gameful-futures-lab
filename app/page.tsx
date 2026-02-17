@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
@@ -100,6 +100,8 @@ export default function Home() {
   const [canvasDebugSize, setCanvasDebugSize] = useState<{ widthPx: number; heightPx: number } | null>(null);
   const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
   const [peopleCutoffBufferPx, setPeopleCutoffBufferPx] = useState(100);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -140,6 +142,13 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
   }, [sceneTuning]);
+
+  useEffect(() => {
+    const updateViewport = () => setIsNarrowViewport(window.innerWidth < 920);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
 
 
   const sceneCharacters = useMemo(
@@ -346,30 +355,33 @@ export default function Home() {
   }
 
 
-  const peopleExtraCanvasHeightPx = mode === 'people' ? peopleProjectedOverflowPx : 0;
+  const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
+  const activePeopleRows = Math.ceil(sceneCharacters.length / activePeopleColumns);
+  const fallbackOverflowPx = mode === 'people' ? Math.max(0, (activePeopleRows - 2) * 220) : 0;
+  const peopleExtraCanvasHeightPx = mode === 'people' ? Math.max(peopleProjectedOverflowPx, fallbackOverflowPx) : 0;
   const peopleScrollSpacerPx = peopleExtraCanvasHeightPx > 0 ? peopleExtraCanvasHeightPx + 120 : 0;
 
   useEffect(() => {
-    if (mode !== 'people' || peopleScrollSpacerPx <= 0) {
+    const mainEl = mainRef.current;
+    if (!mainEl || mode !== 'people' || peopleScrollSpacerPx <= 0) {
       setPeopleScrollProgress(0);
       return;
     }
 
     const update = () => {
-      const doc = document.documentElement;
-      const maxScroll = Math.max(1, doc.scrollHeight - window.innerHeight);
-      const next = Math.max(0, Math.min(1, window.scrollY / maxScroll));
+      const maxScroll = Math.max(1, mainEl.scrollHeight - mainEl.clientHeight);
+      const next = Math.max(0, Math.min(1, mainEl.scrollTop / maxScroll));
       setPeopleScrollProgress(next);
     };
 
     update();
-    window.addEventListener('scroll', update, { passive: true });
-    return () => window.removeEventListener('scroll', update);
+    mainEl.addEventListener('scroll', update, { passive: true });
+    return () => mainEl.removeEventListener('scroll', update);
   }, [mode, peopleScrollSpacerPx]);
 
 
   return (
-    <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
+    <main ref={mainRef} className={`main ${mode === 'people' ? 'main-people' : ''}`}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <LandingScene3D
           characters={sceneCharacters}
@@ -396,7 +408,7 @@ export default function Home() {
 
       {mode === 'people' && canvasDebugSize && (
         <div className="canvas-debug" aria-live="polite">
-          canvas: {canvasDebugSize.widthPx}px × {canvasDebugSize.heightPx}px · overflow: {peopleProjectedOverflowPx}px · buffer: {peopleCutoffBufferPx}px
+          canvas: {canvasDebugSize.widthPx}px × {canvasDebugSize.heightPx}px · overflow: {peopleProjectedOverflowPx}px (fallback {fallbackOverflowPx}px) · buffer: {peopleCutoffBufferPx}px · scroll: {(peopleScrollProgress * 100).toFixed(0)}%
         </div>
       )}
 
