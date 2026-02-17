@@ -329,7 +329,7 @@ function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
-    if (editMode || !isPeopleMode) {
+    if (!isPeopleMode) {
       setLayoutTransitionProgress(1);
       setIsLayoutTransitioning(false);
       return;
@@ -360,7 +360,7 @@ function DraggableCharacter({
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [id, isPeopleMode, editMode, lineupTarget.x, lineupTarget.z, override.x, override.z, totalTransitionSeconds, onArrivalChange]);
+  }, [id, isPeopleMode, lineupTarget.x, lineupTarget.z, override.x, override.z, totalTransitionSeconds, onArrivalChange]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -368,7 +368,7 @@ function DraggableCharacter({
     const useLayoutTransition = isPeopleMode && peopleTransitionProgress >= 0.999 && isLayoutTransitioning;
     const transitionProgress = useLayoutTransition ? layoutTransitionProgress : peopleTransitionProgress;
     const transitionStart = useLayoutTransition ? peopleStartPosition.current : { x: override.x, z: override.z };
-    const inPeopleTransition = !editMode && (isPeopleMode || transitionProgress > 0.001);
+    const inPeopleTransition = (!editMode && (isPeopleMode || transitionProgress > 0.001)) || useLayoutTransition;
 
     if (inPeopleTransition) {
       const desiredX = transitionStart.x + (lineupTarget.x - transitionStart.x) * transitionProgress;
@@ -1167,7 +1167,7 @@ export default function LandingScene3D({
               ? { x: peopleOverride.x, z: peopleOverride.z }
               : projectedLineupTarget
             : projectedLineupTarget;
-          const activeOverride = useCustomLayout || (isPeopleMode && editMode) ? peopleOverride : homeOverride;
+          const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
 
           return (
             <group key={character.id}>
@@ -1180,7 +1180,7 @@ export default function LandingScene3D({
                     lineupTarget.z + Math.cos(southFacingY) * 0.56,
                   ]}
                   rotationY={southFacingY}
-                  opacity={arrivedIds[character.id] ? 1 : 0}
+                  opacity={editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0}
                 />
               )}
               <DraggableCharacter
