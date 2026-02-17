@@ -903,8 +903,8 @@ function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPr
   const safeColumns = Math.max(1, Math.round(columns));
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
-  const xSpacing = 0.52;
-  const yStep = 0.4;
+  const xSpacing = 0.44;
+  const yStep = 0.34;
   const x = (slot.xIndex - rowCenter) * xSpacing;
   const yStart = 0.24;
   const y = yStart - slot.row * yStep;
