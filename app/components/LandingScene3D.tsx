@@ -251,6 +251,7 @@ type LandingScene3DProps = {
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
   peopleExtraCanvasHeightPx?: number;
+  onPeopleOverflowPxChange?: (overflowPx: number) => void;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -959,6 +960,7 @@ export default function LandingScene3D({
   onEnvironmentOverrideChange,
   onCharacterActivate,
   peopleExtraCanvasHeightPx = 0,
+  onPeopleOverflowPxChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1125,6 +1127,111 @@ export default function LandingScene3D({
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
+
+
+  useEffect(() => {
+    if (!onPeopleOverflowPxChange) return;
+
+    if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      onPeopleOverflowPxChange(0);
+      return;
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const sceneWidthPx = (canvasScalePercent / 100) * viewportWidth;
+    const sceneHeightPx = (sceneHeightPercent / 100) * viewportHeight + sceneExtraHeightPx;
+
+    const projectionCamera = new PerspectiveCamera(
+      effectiveTuning.fov,
+      Math.max(0.1, sceneWidthPx / Math.max(1, sceneHeightPx)),
+      0.1,
+      1000,
+    );
+    projectionCamera.position.set(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ);
+    projectionCamera.lookAt(0, 0, 0);
+    projectionCamera.updateProjectionMatrix();
+    projectionCamera.updateMatrixWorld();
+
+    let maxNameplateBottomPx = -Infinity;
+
+    orderedCharacters.forEach((character, index) => {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+        rotX: baseRotX,
+        rotY: baseRotY,
+        rotZ: baseRotZ,
+      };
+
+      const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+        x: projectedLineupTarget.x,
+        y: homeOverride.y,
+        z: projectedLineupTarget.z,
+        scale: homeOverride.scale,
+        rotX: 0,
+        rotY: southFacingY,
+        rotZ: 0,
+      };
+      const useCustomLayout = activeLayoutPreset === 'custom';
+      const lineupTarget = useCustomLayout
+        ? { x: rawPeopleOverride.x, z: rawPeopleOverride.z }
+        : projectedLineupTarget;
+
+      const nameplateWorld = new Vector3(
+        lineupTarget.x + Math.sin(southFacingY) * 0.56,
+        -0.42,
+        lineupTarget.z + Math.cos(southFacingY) * 0.56,
+      );
+      const projected = nameplateWorld.project(projectionCamera);
+      const nameplateScreenY = ((-projected.y + 1) / 2) * sceneHeightPx;
+      maxNameplateBottomPx = Math.max(maxNameplateBottomPx, nameplateScreenY);
+    });
+
+    if (!Number.isFinite(maxNameplateBottomPx)) {
+      onPeopleOverflowPxChange(0);
+      return;
+    }
+
+    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - sceneHeightPx + 100));
+    onPeopleOverflowPxChange(overflowPx);
+  }, [
+    onPeopleOverflowPxChange,
+    isPeopleMode,
+    activeLayoutPreset,
+    activeLayoutColumns,
+    canvasScalePercent,
+    canvasInsetPercent,
+    sceneHeightPercent,
+    sceneExtraHeightPx,
+    effectiveTuning.sceneOffsetX,
+    effectiveTuning.sceneOffsetY,
+    effectiveTuning.cameraX,
+    effectiveTuning.cameraY,
+    effectiveTuning.cameraZ,
+    effectiveTuning.fov,
+    orderedCharacters,
+    tuning.characterOverrides,
+    tuning.peopleCharacterOverrides,
+    peopleTargetTuning.cameraX,
+    peopleTargetTuning.cameraY,
+    peopleTargetTuning.cameraZ,
+    peopleTargetTuning.fov,
+    southFacingY,
+  ]);
 
   if (!isWebGLAvailable) {
     return null;

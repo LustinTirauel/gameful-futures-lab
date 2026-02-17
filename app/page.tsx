@@ -96,7 +96,7 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
-  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [peopleProjectedOverflowPx, setPeopleProjectedOverflowPx] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -138,15 +138,6 @@ export default function Home() {
     localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
   }, [sceneTuning]);
 
-  useEffect(() => {
-    const updateViewport = () => {
-      setIsNarrowViewport(window.innerWidth < 920);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-    return () => window.removeEventListener('resize', updateViewport);
-  }, []);
 
   const sceneCharacters = useMemo(
     () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
@@ -168,6 +159,7 @@ export default function Home() {
     setMode(nextMode);
     setSelectedPerson(null);
     setSelectedProject(null);
+    if (nextMode !== 'people') setPeopleProjectedOverflowPx(0);
   }
 
   function handleCharacterClick(personId: string) {
@@ -347,13 +339,8 @@ export default function Home() {
   }
 
 
-  const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
-  const activePeopleRows = Math.ceil(sceneCharacters.length / activePeopleColumns);
-  const peopleHasOverflow = mode === 'people' && activePeopleRows > 2;
-
-
-  const peopleExtraCanvasHeightPx = peopleHasOverflow ? Math.round((activePeopleRows - 2) * 180) : 0;
-  const peopleScrollSpacerPx = peopleHasOverflow ? peopleExtraCanvasHeightPx + 140 : 0;
+  const peopleExtraCanvasHeightPx = mode === 'people' ? peopleProjectedOverflowPx : 0;
+  const peopleScrollSpacerPx = peopleExtraCanvasHeightPx > 0 ? peopleExtraCanvasHeightPx + 120 : 0;
 
 
   return (
@@ -373,6 +360,7 @@ export default function Home() {
           onEnvironmentOverrideChange={updateEnvironmentOverride}
           onCharacterActivate={handleCharacterSelect}
           peopleExtraCanvasHeightPx={peopleExtraCanvasHeightPx}
+          onPeopleOverflowPxChange={setPeopleProjectedOverflowPx}
         />
       )}
 
