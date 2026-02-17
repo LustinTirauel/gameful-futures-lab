@@ -34,9 +34,9 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'fogNear', label: 'Fog Near', min: 1, max: 28, step: 0.5 },
   { key: 'fogFar', label: 'Fog Far', min: 8, max: 60, step: 0.5 },
   { key: 'characterScale', label: 'Character Scale', min: 0.4, max: 1.4, step: 0.01 },
+  { key: 'sceneViewportHeightVh', label: 'Scene Reveal Height (vh)', min: 35, max: 100, step: 1 },
   { key: 'sceneOffsetX', label: 'Scene Offset X (%)', min: -40, max: 20, step: 0.5 },
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
-  { key: 'sceneCanvasScale', label: 'Canvas Scale', min: 1, max: 2.6, step: 0.05 },
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
   { key: 'ambientLightIntensity', label: 'Ambient Light Intensity', min: 0, max: 2.5, step: 0.05 },
   { key: 'directionalLightIntensity', label: 'Directional Light Intensity', min: 0, max: 3, step: 0.05 },
@@ -59,7 +59,6 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
   'characterScale',
   'sceneOffsetX',
   'sceneOffsetY',
-  'sceneCanvasScale',
   'sceneRadius',
   'ambientLightIntensity',
   'directionalLightIntensity',
@@ -339,20 +338,22 @@ export default function Home() {
   return (
     <main className="main">
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
-        <LandingScene3D
-          characters={sceneCharacters}
-          movementBehavior={modeMovementBehavior[mode]}
-          mode={mode}
-          onRuntimeError={handleSceneRuntimeError}
-          tuning={sceneTuning}
-          editMode={editMode}
-          selectedModelId={selectedModelId}
-          onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
-          onCharacterOverrideChange={updateCharacterOverride}
-          onFireOverrideChange={updateFireOverride}
-          onEnvironmentOverrideChange={updateEnvironmentOverride}
-          onCharacterActivate={handleCharacterSelect}
-        />
+        <div className="scene-viewport" style={{ height: `${sceneTuning.sceneViewportHeightVh}vh` }}>
+          <LandingScene3D
+            characters={sceneCharacters}
+            movementBehavior={modeMovementBehavior[mode]}
+            mode={mode}
+            onRuntimeError={handleSceneRuntimeError}
+            tuning={sceneTuning}
+            editMode={editMode}
+            selectedModelId={selectedModelId}
+            onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
+            onCharacterOverrideChange={updateCharacterOverride}
+            onFireOverrideChange={updateFireOverride}
+            onEnvironmentOverrideChange={updateEnvironmentOverride}
+            onCharacterActivate={handleCharacterSelect}
+          />
+        </div>
       )}
 
       <TopNav mode={mode} onModeChange={handleModeChange} />

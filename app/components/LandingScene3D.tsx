@@ -32,7 +32,9 @@ export type SceneTuning = {
   characterScale: number;
   sceneOffsetX: number;
   sceneOffsetY: number;
-  sceneCanvasScale: number;
+  sceneWorldWidthPx: number;
+  sceneWorldHeightPx: number;
+  sceneViewportHeightVh: number;
   sceneRadius: number;
   ambientLightIntensity: number;
   directionalLightIntensity: number;
@@ -65,7 +67,6 @@ export type PeopleViewTuning = Pick<
   | 'characterScale'
   | 'sceneOffsetX'
   | 'sceneOffsetY'
-  | 'sceneCanvasScale'
   | 'sceneRadius'
   | 'ambientLightIntensity'
   | 'directionalLightIntensity'
@@ -84,7 +85,9 @@ export const defaultSceneTuning: SceneTuning = {
   characterScale: 0.78,
   sceneOffsetX: -10,
   sceneOffsetY: 6,
-  sceneCanvasScale: 1.4,
+  sceneWorldWidthPx: 3840,
+  sceneWorldHeightPx: 2160,
+  sceneViewportHeightVh: 100,
   sceneRadius: 40,
   ambientLightIntensity: 1.45,
   directionalLightIntensity: 0.8,
@@ -198,7 +201,6 @@ export const defaultSceneTuning: SceneTuning = {
     characterScale: 0.78,
     sceneOffsetX: 0,
     sceneOffsetY: -4.5,
-    sceneCanvasScale: 1.4,
     sceneRadius: 40,
     ambientLightIntensity: 1.55,
     directionalLightIntensity: 3,
@@ -1007,11 +1009,6 @@ export default function LandingScene3D({
     characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
     sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleTargetTuning.sceneOffsetX, peopleTransitionProgress),
     sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress),
-    sceneCanvasScale: lerpNumber(
-      tuning.sceneCanvasScale,
-      peopleTargetTuning.sceneCanvasScale,
-      peopleTransitionProgress,
-    ),
     sceneRadius: lerpNumber(tuning.sceneRadius, peopleTargetTuning.sceneRadius, peopleTransitionProgress),
     ambientLightIntensity: lerpNumber(
       tuning.ambientLightIntensity,
@@ -1027,8 +1024,6 @@ export default function LandingScene3D({
     directionalLightY: lerpNumber(tuning.directionalLightY, peopleTargetTuning.directionalLightY, peopleTransitionProgress),
     directionalLightZ: lerpNumber(tuning.directionalLightZ, peopleTargetTuning.directionalLightZ, peopleTransitionProgress),
   };
-  const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
-  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
 
@@ -1128,17 +1123,11 @@ export default function LandingScene3D({
   }
 
   return (
-    <div
-      className="scene-layer"
-      style={{
-        width: `${canvasScalePercent}%`,
-        height: `${canvasScalePercent}%`,
-        left: `${canvasInsetPercent}%`,
-        top: `${canvasInsetPercent}%`,
-        transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
-      }}
-      aria-hidden="true"
-    >
+    <div className="scene-layer" style={{
+      width: `${tuning.sceneWorldWidthPx}px`,
+      height: `${tuning.sceneWorldHeightPx}px`,
+      transform: `translate(calc(-50% + ${effectiveTuning.sceneOffsetX}%), calc(-50% + ${effectiveTuning.sceneOffsetY}%))`,
+    }} aria-hidden="true">
       <Canvas
         camera={{ position: [effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ], fov: effectiveTuning.fov }}
         shadows
