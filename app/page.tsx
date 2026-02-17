@@ -99,6 +99,7 @@ export default function Home() {
   const [peopleProjectedOverflowPx, setPeopleProjectedOverflowPx] = useState(0);
   const [canvasDebugSize, setCanvasDebugSize] = useState<{ widthPx: number; heightPx: number } | null>(null);
   const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
+  const [peopleCutoffBufferPx, setPeopleCutoffBufferPx] = useState(100);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -387,6 +388,7 @@ export default function Home() {
           onPeopleOverflowPxChange={setPeopleProjectedOverflowPx}
           onCanvasDebugSizeChange={setCanvasDebugSize}
           peopleScrollProgress={peopleScrollProgress}
+          peopleCutoffBufferPx={peopleCutoffBufferPx}
         />
       )}
 
@@ -394,7 +396,7 @@ export default function Home() {
 
       {mode === 'people' && canvasDebugSize && (
         <div className="canvas-debug" aria-live="polite">
-          canvas: {canvasDebugSize.widthPx}px × {canvasDebugSize.heightPx}px
+          canvas: {canvasDebugSize.widthPx}px × {canvasDebugSize.heightPx}px · overflow: {peopleProjectedOverflowPx}px · buffer: {peopleCutoffBufferPx}px
         </div>
       )}
 
@@ -490,6 +492,19 @@ export default function Home() {
                       />
                     </label>
                   )}
+
+                  <label>
+                    <span>People cutoff buffer (px)</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={600}
+                      step={10}
+                      value={peopleCutoffBufferPx}
+                      onChange={(event) => setPeopleCutoffBufferPx(Number(event.target.value))}
+                    />
+                    <strong>{peopleCutoffBufferPx.toFixed(0)} px</strong>
+                  </label>
                 </>
               )}
 

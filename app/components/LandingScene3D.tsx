@@ -254,6 +254,7 @@ type LandingScene3DProps = {
   onPeopleOverflowPxChange?: (overflowPx: number) => void;
   onCanvasDebugSizeChange?: (size: { widthPx: number; heightPx: number }) => void;
   peopleScrollProgress?: number;
+  peopleCutoffBufferPx?: number;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -965,6 +966,7 @@ export default function LandingScene3D({
   onPeopleOverflowPxChange,
   onCanvasDebugSizeChange,
   peopleScrollProgress = 0,
+  peopleCutoffBufferPx = 100,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1212,7 +1214,7 @@ export default function LandingScene3D({
       return;
     }
 
-    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - sceneHeightPx + 100));
+    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - sceneHeightPx + peopleCutoffBufferPx));
     onPeopleOverflowPxChange(overflowPx);
   }, [
     onPeopleOverflowPxChange,
@@ -1236,6 +1238,7 @@ export default function LandingScene3D({
     peopleTargetTuning.cameraZ,
     peopleTargetTuning.fov,
     southFacingY,
+    peopleCutoffBufferPx,
   ]);
 
   useEffect(() => {
