@@ -902,10 +902,15 @@ function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPr
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
   const xSpacing = safeColumns <= 2 ? 0.62 : 0.52;
-  const yStep = safeColumns === 1 ? 0.46 : 0.4;
+  // With 1-2 columns we create many more rows. Large NDC Y steps push lower rows
+  // toward the bottom of the camera frustum, which projects to much closer
+  // world-space points and looks like an unintended zoom-in.
+  const yStep = safeColumns === 1 ? 0.2 : safeColumns === 2 ? 0.24 : 0.4;
   const x = (slot.xIndex - rowCenter) * xSpacing;
-  const yStart = safeColumns === 1 ? 0.34 : 0.24;
-  const y = yStart - slot.row * yStep;
+  const yStart = safeColumns <= 2 ? 0.2 : 0.24;
+  const rawY = yStart - slot.row * yStep;
+  const yMin = safeColumns <= 2 ? -0.32 : -1;
+  const y = Math.max(yMin, rawY);
   return { x, y };
 }
 
