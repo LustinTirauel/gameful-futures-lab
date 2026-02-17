@@ -144,7 +144,6 @@ export default function Home() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  const sortedPeople = useMemo(() => [...people].sort((a, b) => a.name.localeCompare(b.name)), []);
   const sceneCharacters = useMemo(
     () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
     [],

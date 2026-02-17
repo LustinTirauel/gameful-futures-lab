@@ -897,12 +897,6 @@ function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fo
 }
 
 
-function getPeopleLayoutRowCount(total: number, preset: PeopleLayoutPreset, columns: number): number {
-  if (preset === 'custom') return 1;
-  const safeColumns = Math.max(1, Math.round(columns));
-  return Math.max(1, Math.ceil(total / safeColumns));
-}
-
 export default function LandingScene3D({
   characters,
   movementBehavior = 'idle',
