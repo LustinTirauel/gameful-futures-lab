@@ -34,7 +34,7 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'fogNear', label: 'Fog Near', min: 1, max: 28, step: 0.5 },
   { key: 'fogFar', label: 'Fog Far', min: 8, max: 60, step: 0.5 },
   { key: 'characterScale', label: 'Character Scale', min: 0.4, max: 1.4, step: 0.01 },
-  { key: 'sceneViewportHeightVh', label: 'Scene Reveal Height (vh)', min: 35, max: 100, step: 1 },
+  { key: 'sceneViewportHeightVh', label: 'Scene Reveal Height (vh)', min: 35, max: 300, step: 1 },
   { key: 'sceneOffsetX', label: 'Scene Offset X (%)', min: -40, max: 20, step: 0.5 },
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
@@ -336,7 +336,7 @@ export default function Home() {
   }
 
   return (
-    <main className="main">
+    <main className="main" style={{ minHeight: `${Math.max(100, sceneTuning.sceneViewportHeightVh)}vh` }}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <div className="scene-viewport" style={{ height: `${sceneTuning.sceneViewportHeightVh}vh` }}>
           <LandingScene3D
