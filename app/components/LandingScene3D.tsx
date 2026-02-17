@@ -902,9 +902,10 @@ function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPr
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
   const xSpacing = safeColumns <= 2 ? 0.62 : 0.52;
-  const yStep = safeColumns === 1 ? 0.52 : 0.4;
+  const yStep = safeColumns === 1 ? 0.46 : 0.4;
   const x = (slot.xIndex - rowCenter) * xSpacing;
-  const y = 0.24 - slot.row * yStep;
+  const yStart = safeColumns === 1 ? 0.34 : 0.24;
+  const y = yStart - slot.row * yStep;
   return { x, y };
 }
 
@@ -1080,6 +1081,45 @@ export default function LandingScene3D({
   }, [isPeopleMode, totalTransitionSeconds]);
 
 
+
+
+
+  const previousLayoutKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const layoutKey = `${activeLayoutPreset}:${activeLayoutColumns}`;
+
+    if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      previousLayoutKeyRef.current = layoutKey;
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const previousLayoutKey = previousLayoutKeyRef.current;
+    previousLayoutKeyRef.current = layoutKey;
+
+    // Do not rerun when entering People mode; only rerun when layout settings change while already in People.
+    if (previousLayoutKey === null || peopleTransitionProgress < 0.999 || previousLayoutKey === layoutKey) {
+      setRelayoutProgress(1);
+      return;
+    }
+
+    const start = performance.now();
+    const duration = Math.max(0.01, tuning.runDurationSeconds);
+    let raf = 0;
+    setRelayoutProgress(0);
+
+    const tick = (time: number) => {
+      const t = Math.max(0, Math.min(1, (time - start) / (duration * 1000)));
+      setRelayoutProgress(t);
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+      }
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
 
   if (!isWebGLAvailable) {
     return null;

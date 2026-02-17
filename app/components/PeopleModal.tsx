@@ -42,3 +42,5 @@ export default function PeopleModal({ person, projects, onClose }: PeopleModalPr
     </div>
   );
 }
+
+
