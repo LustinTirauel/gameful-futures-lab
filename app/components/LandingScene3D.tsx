@@ -405,6 +405,10 @@ function DraggableCharacter({
       groupRef.current.rotation.x += (desiredRotX - groupRef.current.rotation.x) * 0.12;
       groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
     } else {
+      if (isRunningInPeople) {
+        setIsRunningInPeople(false);
+      }
+
       const smooth = isDragging.current ? 0.42 : 0.12;
       const idleTargetX = isPeopleMode ? lineupTarget.x : targetPosition.current.x;
       const idleTargetZ = isPeopleMode ? lineupTarget.z : targetPosition.current.z;
