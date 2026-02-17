@@ -360,7 +360,7 @@ function DraggableCharacter({
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [id, isPeopleMode, lineupTarget.x, lineupTarget.z, override.x, override.z, totalTransitionSeconds, onArrivalChange]);
+  }, [id, isPeopleMode, lineupTarget.x, lineupTarget.z, override.x, override.z, totalTransitionSeconds]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
