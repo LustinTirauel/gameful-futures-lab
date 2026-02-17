@@ -406,8 +406,8 @@ function DraggableCharacter({
       groupRef.current.rotation.z += (desiredRotZ - groupRef.current.rotation.z) * 0.12;
     } else {
       const smooth = isDragging.current ? 0.42 : 0.12;
-      const idleTargetX = !editMode && isPeopleMode ? lineupTarget.x : targetPosition.current.x;
-      const idleTargetZ = !editMode && isPeopleMode ? lineupTarget.z : targetPosition.current.z;
+      const idleTargetX = isPeopleMode ? lineupTarget.x : targetPosition.current.x;
+      const idleTargetZ = isPeopleMode ? lineupTarget.z : targetPosition.current.z;
       groupRef.current.position.x += (idleTargetX - groupRef.current.position.x) * smooth;
       groupRef.current.position.z += (idleTargetZ - groupRef.current.position.z) * smooth;
 
