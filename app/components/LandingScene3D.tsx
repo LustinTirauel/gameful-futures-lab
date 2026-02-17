@@ -250,6 +250,9 @@ type LandingScene3DProps = {
   onEnvironmentOverrideChange?: (modelId: string, override: ModelOverride) => void;
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
+  peopleExtraCanvasHeightPx?: number;
+  onPeopleOverflowPxChange?: (overflowPx: number) => void;
+  onCanvasDebugSizeChange?: (size: { widthPx: number; heightPx: number }) => void;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -901,11 +904,12 @@ function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPr
   const safeColumns = Math.max(1, Math.round(columns));
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
-  const xSpacing = safeColumns <= 2 ? 0.62 : 0.52;
-  const yStep = safeColumns === 1 ? 0.46 : 0.4;
+  const xSpacing = 0.52;
+  const yStep = 0.4;
   const x = (slot.xIndex - rowCenter) * xSpacing;
-  const yStart = safeColumns === 1 ? 0.34 : 0.24;
+  const yStart = 0.24;
   const y = yStart - slot.row * yStep;
+
   return { x, y };
 }
 
@@ -956,6 +960,9 @@ export default function LandingScene3D({
   onFireOverrideChange,
   onEnvironmentOverrideChange,
   onCharacterActivate,
+  peopleExtraCanvasHeightPx = 0,
+  onPeopleOverflowPxChange,
+  onCanvasDebugSizeChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1031,6 +1038,7 @@ export default function LandingScene3D({
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
   const sceneHeightPercent = canvasScalePercent;
+  const sceneExtraHeightPx = isPeopleMode ? Math.max(0, peopleExtraCanvasHeightPx) : 0;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1122,6 +1130,124 @@ export default function LandingScene3D({
     return () => window.cancelAnimationFrame(raf);
   }, [isPeopleMode, activeLayoutPreset, activeLayoutColumns, peopleTransitionProgress, tuning.runDurationSeconds]);
 
+
+  useEffect(() => {
+    if (!onPeopleOverflowPxChange) return;
+
+    if (!isPeopleMode || activeLayoutPreset === 'custom') {
+      onPeopleOverflowPxChange(0);
+      return;
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const sceneWidthPx = (canvasScalePercent / 100) * viewportWidth;
+    const sceneHeightPx = (sceneHeightPercent / 100) * viewportHeight + sceneExtraHeightPx;
+
+    const projectionCamera = new PerspectiveCamera(
+      effectiveTuning.fov,
+      Math.max(0.1, sceneWidthPx / Math.max(1, sceneHeightPx)),
+      0.1,
+      1000,
+    );
+    projectionCamera.position.set(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ);
+    projectionCamera.lookAt(0, 0, 0);
+    projectionCamera.updateProjectionMatrix();
+    projectionCamera.updateMatrixWorld();
+
+    let maxNameplateBottomPx = -Infinity;
+
+    orderedCharacters.forEach((character, index) => {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+        rotX: baseRotX,
+        rotY: baseRotY,
+        rotZ: baseRotZ,
+      };
+
+      const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const rawPeopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+        x: projectedLineupTarget.x,
+        y: homeOverride.y,
+        z: projectedLineupTarget.z,
+        scale: homeOverride.scale,
+        rotX: 0,
+        rotY: southFacingY,
+        rotZ: 0,
+      };
+      const lineupTarget = projectedLineupTarget;
+
+      const nameplateWorld = new Vector3(
+        lineupTarget.x + Math.sin(southFacingY) * 0.56,
+        -0.42,
+        lineupTarget.z + Math.cos(southFacingY) * 0.56,
+      );
+      const projected = nameplateWorld.project(projectionCamera);
+      const nameplateScreenY = ((-projected.y + 1) / 2) * sceneHeightPx;
+      maxNameplateBottomPx = Math.max(maxNameplateBottomPx, nameplateScreenY);
+    });
+
+    if (!Number.isFinite(maxNameplateBottomPx)) {
+      onPeopleOverflowPxChange(0);
+      return;
+    }
+
+    const overflowPx = Math.max(0, Math.ceil(maxNameplateBottomPx - sceneHeightPx + 100));
+    onPeopleOverflowPxChange(overflowPx);
+  }, [
+    onPeopleOverflowPxChange,
+    isPeopleMode,
+    activeLayoutPreset,
+    activeLayoutColumns,
+    canvasScalePercent,
+    canvasInsetPercent,
+    sceneHeightPercent,
+    sceneExtraHeightPx,
+    effectiveTuning.sceneOffsetX,
+    effectiveTuning.sceneOffsetY,
+    effectiveTuning.cameraX,
+    effectiveTuning.cameraY,
+    effectiveTuning.cameraZ,
+    effectiveTuning.fov,
+    orderedCharacters,
+    tuning.characterOverrides,
+    tuning.peopleCharacterOverrides,
+    peopleTargetTuning.cameraX,
+    peopleTargetTuning.cameraY,
+    peopleTargetTuning.cameraZ,
+    peopleTargetTuning.fov,
+    southFacingY,
+  ]);
+
+  useEffect(() => {
+    if (!onCanvasDebugSizeChange) return;
+
+    const updateSize = () => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const widthPx = (canvasScalePercent / 100) * viewportWidth;
+      const heightPx = (sceneHeightPercent / 100) * viewportHeight + sceneExtraHeightPx;
+      onCanvasDebugSizeChange({ widthPx: Math.round(widthPx), heightPx: Math.round(heightPx) });
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [onCanvasDebugSizeChange, canvasScalePercent, sceneHeightPercent, sceneExtraHeightPx]);
+
   if (!isWebGLAvailable) {
     return null;
   }
@@ -1131,7 +1257,7 @@ export default function LandingScene3D({
       className="scene-layer"
       style={{
         width: `${canvasScalePercent}%`,
-        height: `${sceneHeightPercent}%`,
+        height: `calc(${sceneHeightPercent}% + ${sceneExtraHeightPx}px)`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
         transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
