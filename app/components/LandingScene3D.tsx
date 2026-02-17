@@ -902,10 +902,16 @@ function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPr
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
   const xSpacing = 0.52;
-  const yStep = 0.4;
   const x = (slot.xIndex - rowCenter) * xSpacing;
+
+  // Keep lineup rows within a stable vertical NDC band so extra rows (e.g. 1-2
+  // columns) don't project to near-camera ground points that feel like a zoom.
   const yStart = 0.24;
-  const y = yStart - slot.row * yStep;
+  const yMin = -0.56;
+  const totalRows = Math.max(1, Math.ceil(total / safeColumns));
+  const yStep = totalRows > 1 ? Math.min(0.4, (yStart - yMin) / (totalRows - 1)) : 0.4;
+  const y = Math.max(yMin, yStart - slot.row * yStep);
+
   return { x, y };
 }
 
