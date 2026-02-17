@@ -253,7 +253,19 @@ type LandingScene3DProps = {
   peopleScrollProgress?: number;
 };
 
-function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
+function CameraController({
+  cameraX,
+  cameraY,
+  cameraZ,
+  fov,
+  lookAtY = 0,
+}: {
+  cameraX: number;
+  cameraY: number;
+  cameraZ: number;
+  fov: number;
+  lookAtY?: number;
+}) {
   const { camera } = useThree();
 
   useEffect(() => {
@@ -262,8 +274,8 @@ function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number;
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-    camera.lookAt(0, 0, 0);
-  }, [camera, cameraX, cameraY, cameraZ, fov]);
+    camera.lookAt(0, lookAtY, 0);
+  }, [camera, cameraX, cameraY, cameraZ, fov, lookAtY]);
 
   return null;
 }
@@ -1000,11 +1012,13 @@ export default function LandingScene3D({
   const peopleTargetTuning = tuning.peopleViewTuning;
 
   const peopleScrollAmount = isPeopleMode ? peopleScrollProgress : 0;
+  const cameraPanYOffset = peopleScrollAmount * 2.4;
   const effectiveTuning = {
     cameraX: lerpNumber(tuning.cameraX, peopleTargetTuning.cameraX, peopleTransitionProgress),
-    cameraY: lerpNumber(tuning.cameraY, peopleTargetTuning.cameraY, peopleTransitionProgress) - peopleScrollAmount * 1.6,
-    cameraZ: lerpNumber(tuning.cameraZ, peopleTargetTuning.cameraZ, peopleTransitionProgress) + peopleScrollAmount * 1.2,
-    fov: lerpNumber(tuning.fov, peopleTargetTuning.fov, peopleTransitionProgress) + peopleScrollAmount * 6,
+    cameraY: lerpNumber(tuning.cameraY, peopleTargetTuning.cameraY, peopleTransitionProgress) - cameraPanYOffset,
+    cameraZ: lerpNumber(tuning.cameraZ, peopleTargetTuning.cameraZ, peopleTransitionProgress),
+    fov: lerpNumber(tuning.fov, peopleTargetTuning.fov, peopleTransitionProgress),
+    cameraLookAtY: -cameraPanYOffset,
     fogNear: lerpNumber(tuning.fogNear, peopleTargetTuning.fogNear, peopleTransitionProgress),
     fogFar: lerpNumber(tuning.fogFar, peopleTargetTuning.fogFar, peopleTransitionProgress),
     characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
@@ -1151,6 +1165,7 @@ export default function LandingScene3D({
           cameraY={effectiveTuning.cameraY}
           cameraZ={effectiveTuning.cameraZ}
           fov={effectiveTuning.fov}
+          lookAtY={effectiveTuning.cameraLookAtY}
         />
         <color attach="background" args={[backgroundColor]} />
         <fog attach="fog" args={[fogColor, effectiveTuning.fogNear, effectiveTuning.fogFar]} />
