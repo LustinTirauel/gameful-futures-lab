@@ -28,6 +28,7 @@ type PrimitiveCharacterProps = GroupProps & {
   pose?: CharacterPose;
   locomotion?: 'idle' | 'run';
   hoverBehavior?: 'none' | 'wave';
+  runMotionSpeed?: number;
   onActivate?: () => void;
 };
 
@@ -81,6 +82,7 @@ export default function PrimitiveCharacter({
   pose = 'standing',
   locomotion = 'idle',
   hoverBehavior = 'none',
+  runMotionSpeed = 1,
   onActivate,
   ...groupProps
 }: PrimitiveCharacterProps) {
@@ -103,7 +105,8 @@ export default function PrimitiveCharacter({
     if (!rootRef.current) return;
 
     const elapsed = clock.elapsedTime;
-    const runCycle = Math.sin(elapsed * 10);
+    const runFrequency = 10 * runMotionSpeed;
+    const runCycle = Math.sin(elapsed * runFrequency);
     const nextProgress = Math.max(0, reaction.progress - delta * 1.8);
     if (nextProgress !== reaction.progress) {
       setReaction((prev) => ({ ...prev, progress: nextProgress }));
