@@ -30,7 +30,7 @@ a { color: inherit; text-decoration: none; }
 .scene-layer {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 50vh;
 }
 
 .scene-layer canvas {
@@ -331,4 +331,3 @@ a { color: inherit; text-decoration: none; }
   border-radius: 10px;
   margin-bottom: 10px;
 }
-
