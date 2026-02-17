@@ -33,6 +33,8 @@ export type SceneTuning = {
   sceneOffsetX: number;
   sceneOffsetY: number;
   sceneCanvasScale: number;
+  sceneCanvasHeightScale: number;
+  sceneCutoffExtensionPx: number;
   sceneRadius: number;
   ambientLightIntensity: number;
   directionalLightIntensity: number;
@@ -66,6 +68,8 @@ export type PeopleViewTuning = Pick<
   | 'sceneOffsetX'
   | 'sceneOffsetY'
   | 'sceneCanvasScale'
+  | 'sceneCanvasHeightScale'
+  | 'sceneCutoffExtensionPx'
   | 'sceneRadius'
   | 'ambientLightIntensity'
   | 'directionalLightIntensity'
@@ -85,6 +89,8 @@ export const defaultSceneTuning: SceneTuning = {
   sceneOffsetX: -10,
   sceneOffsetY: 6,
   sceneCanvasScale: 1.4,
+  sceneCanvasHeightScale: 1,
+  sceneCutoffExtensionPx: 140,
   sceneRadius: 40,
   ambientLightIntensity: 1.45,
   directionalLightIntensity: 0.8,
@@ -199,6 +205,8 @@ export const defaultSceneTuning: SceneTuning = {
     sceneOffsetX: 0,
     sceneOffsetY: -4.5,
     sceneCanvasScale: 1.4,
+    sceneCanvasHeightScale: 1,
+    sceneCutoffExtensionPx: 140,
     sceneRadius: 40,
     ambientLightIntensity: 1.55,
     directionalLightIntensity: 3,
@@ -1012,6 +1020,16 @@ export default function LandingScene3D({
       peopleTargetTuning.sceneCanvasScale,
       peopleTransitionProgress,
     ),
+    sceneCanvasHeightScale: lerpNumber(
+      tuning.sceneCanvasHeightScale,
+      peopleTargetTuning.sceneCanvasHeightScale,
+      peopleTransitionProgress,
+    ),
+    sceneCutoffExtensionPx: lerpNumber(
+      tuning.sceneCutoffExtensionPx,
+      peopleTargetTuning.sceneCutoffExtensionPx,
+      peopleTransitionProgress,
+    ),
     sceneRadius: lerpNumber(tuning.sceneRadius, peopleTargetTuning.sceneRadius, peopleTransitionProgress),
     ambientLightIntensity: lerpNumber(
       tuning.ambientLightIntensity,
@@ -1028,8 +1046,8 @@ export default function LandingScene3D({
     directionalLightZ: lerpNumber(tuning.directionalLightZ, peopleTargetTuning.directionalLightZ, peopleTransitionProgress),
   };
   const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
+  const canvasHeightPercent = canvasScalePercent * effectiveTuning.sceneCanvasHeightScale;
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
-  const sceneCutoffExtensionPx = 140;
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
 
@@ -1133,7 +1151,7 @@ export default function LandingScene3D({
       className="scene-layer"
       style={{
         width: `${canvasScalePercent}%`,
-        height: `calc(${canvasScalePercent}% + ${sceneCutoffExtensionPx}px)`,
+        height: `calc(${canvasHeightPercent}% + ${effectiveTuning.sceneCutoffExtensionPx}px)`,
         left: `${canvasInsetPercent}%`,
         top: `${canvasInsetPercent}%`,
         transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
