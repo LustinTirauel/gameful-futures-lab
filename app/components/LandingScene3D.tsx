@@ -41,6 +41,7 @@ export type SceneTuning = {
   directionalLightZ: number;
   preRunTurnSeconds: number;
   runDurationSeconds: number;
+  peopleRunAnimationSpeed: number;
   characterOverrides: Record<string, ModelOverride>;
   peopleCharacterOverrides: Record<string, ModelOverride>;
   peopleViewTuning: PeopleViewTuning;
@@ -92,6 +93,7 @@ export const defaultSceneTuning: SceneTuning = {
   directionalLightZ: 11.8,
   preRunTurnSeconds: 0,
   runDurationSeconds: 0.5,
+  peopleRunAnimationSpeed: 1.8,
   characterOverrides: {
     alex: {
       x: -3.1122954462698234,
@@ -486,6 +488,7 @@ function DraggableCharacter({
         accessories={config.accessories}
         colors={config.colors}
         hoverBehavior={isPeopleMode ? 'wave' : 'none'}
+        runMotionSpeed={isPeopleMode ? tuning.peopleRunAnimationSpeed : 1}
         onActivate={() => {
           if (!editMode && isPeopleMode) {
             onActivate?.(id);
