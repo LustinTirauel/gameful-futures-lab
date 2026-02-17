@@ -351,10 +351,13 @@ export default function Home() {
 
   const activePeoplePreset = isNarrowViewport ? sceneTuning.peopleLayoutPresetNarrow : sceneTuning.peopleLayoutPreset;
   const activePeopleColumns = Math.max(1, isNarrowViewport ? sceneTuning.peopleLayoutColumnsNarrow : sceneTuning.peopleLayoutColumns);
-  const activePeopleRows = activePeoplePreset === 'custom' ? 1 : Math.ceil(sceneCharacters.length / activePeopleColumns);
-  const lowestCharacterNdcY = activePeoplePreset === 'custom' ? 0 : 0.24 - (activePeopleRows - 1) * 0.4;
-  const offscreenPixels = Math.max(0, ((-1 - lowestCharacterNdcY) / 2) * viewportHeight);
-  const peopleScrollSpacerPx = mode === 'people' ? Math.ceil(offscreenPixels + (offscreenPixels > 0 ? 100 : 0)) : 0;
+  const activePeopleRows = Math.ceil(sceneCharacters.length / activePeopleColumns);
+  const overflowRows = Math.max(0, activePeopleRows - 2);
+  const perOverflowRowPx = Math.max(220, Math.round(viewportHeight * 0.35));
+  const peopleScrollSpacerPx =
+    mode === 'people' && overflowRows > 0
+      ? overflowRows * perOverflowRowPx + 100
+      : 0;
 
   return (
     <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
