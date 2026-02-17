@@ -424,6 +424,9 @@ function DraggableCharacter({
   });
 
   const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
+  const isSceneTransitionActive = peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
+  const shouldUseStandingPose = isPeopleMode || isSceneTransitionActive;
+  const effectiveLocomotion = isRunningInPeople ? 'run' : isPeopleMode ? 'idle' : movementBehavior;
 
   return (
     <group
@@ -481,8 +484,8 @@ function DraggableCharacter({
       }}
     >
       <PrimitiveCharacter
-        pose={isPeopleMode ? 'standing' : config.pose}
-        locomotion={isPeopleMode ? (isRunningInPeople ? 'run' : 'idle') : movementBehavior}
+        pose={shouldUseStandingPose ? 'standing' : config.pose}
+        locomotion={effectiveLocomotion}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
