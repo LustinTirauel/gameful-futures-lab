@@ -97,8 +97,6 @@ export default function Home() {
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(900);
-  const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -143,7 +141,6 @@ export default function Home() {
   useEffect(() => {
     const updateViewport = () => {
       setIsNarrowViewport(window.innerWidth < 920);
-      setViewportHeight(window.innerHeight);
     };
 
     updateViewport();
@@ -354,30 +351,10 @@ export default function Home() {
   const activePeopleRows = Math.ceil(sceneCharacters.length / activePeopleColumns);
   const peopleHasOverflow = mode === 'people' && activePeopleRows > 2;
 
-  useEffect(() => {
-    if (!peopleHasOverflow) {
-      setPeopleScrollProgress(0);
-      return;
-    }
 
-    const onWheel = (event: WheelEvent) => {
-      if (mode !== 'people') return;
+  const peopleExtraCanvasHeightPx = peopleHasOverflow ? Math.round((activePeopleRows - 2) * 180) : 0;
+  const peopleScrollSpacerPx = peopleHasOverflow ? peopleExtraCanvasHeightPx + 140 : 0;
 
-      const eventTarget = event.target;
-      if (eventTarget instanceof Element && eventTarget.closest('.tuning-panel')) {
-        return;
-      }
-
-      event.preventDefault();
-      setPeopleScrollProgress((current) => {
-        const next = current + event.deltaY * 0.0012;
-        return Math.max(0, Math.min(1, next));
-      });
-    };
-
-    window.addEventListener('wheel', onWheel, { passive: false });
-    return () => window.removeEventListener('wheel', onWheel);
-  }, [mode, peopleHasOverflow]);
 
   return (
     <main className={`main ${mode === 'people' ? 'main-people' : ''}`}>
@@ -395,8 +372,7 @@ export default function Home() {
           onFireOverrideChange={updateFireOverride}
           onEnvironmentOverrideChange={updateEnvironmentOverride}
           onCharacterActivate={handleCharacterSelect}
-          peopleScrollProgress={peopleScrollProgress}
-          peopleExtraCanvasHeightPx={peopleHasOverflow ? Math.round((activePeopleRows - 2) * 160 + peopleScrollProgress * 220) : 0}
+          peopleExtraCanvasHeightPx={peopleExtraCanvasHeightPx}
         />
       )}
 
@@ -584,6 +560,7 @@ export default function Home() {
         </ul>
       </section>
 
+      {peopleScrollSpacerPx > 0 && <div style={{ height: `${peopleScrollSpacerPx}px` }} aria-hidden="true" />}
 
       <div className="vignette" />
     </main>

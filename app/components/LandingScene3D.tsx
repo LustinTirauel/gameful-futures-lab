@@ -250,7 +250,6 @@ type LandingScene3DProps = {
   onEnvironmentOverrideChange?: (modelId: string, override: ModelOverride) => void;
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
-  peopleScrollProgress?: number;
   peopleExtraCanvasHeightPx?: number;
 };
 
@@ -959,7 +958,6 @@ export default function LandingScene3D({
   onFireOverrideChange,
   onEnvironmentOverrideChange,
   onCharacterActivate,
-  peopleScrollProgress = 0,
   peopleExtraCanvasHeightPx = 0,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
@@ -1001,7 +999,6 @@ export default function LandingScene3D({
 
   const peopleTargetTuning = tuning.peopleViewTuning;
 
-  const peopleScrollAmount = isPeopleMode ? peopleScrollProgress : 0;
   const effectiveTuning = {
     cameraX: lerpNumber(tuning.cameraX, peopleTargetTuning.cameraX, peopleTransitionProgress),
     cameraY: lerpNumber(tuning.cameraY, peopleTargetTuning.cameraY, peopleTransitionProgress),
@@ -1011,8 +1008,7 @@ export default function LandingScene3D({
     fogFar: lerpNumber(tuning.fogFar, peopleTargetTuning.fogFar, peopleTransitionProgress),
     characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
     sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleTargetTuning.sceneOffsetX, peopleTransitionProgress),
-    sceneOffsetY:
-      lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress) - peopleScrollAmount * 38,
+    sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress),
     sceneCanvasScale: lerpNumber(
       tuning.sceneCanvasScale,
       peopleTargetTuning.sceneCanvasScale,
