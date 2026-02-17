@@ -251,6 +251,7 @@ type LandingScene3DProps = {
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
   peopleScrollProgress?: number;
+  peopleOverflowRows?: number;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -959,6 +960,7 @@ export default function LandingScene3D({
   onEnvironmentOverrideChange,
   onCharacterActivate,
   peopleScrollProgress = 0,
+  peopleOverflowRows = 0,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1035,7 +1037,10 @@ export default function LandingScene3D({
   const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
-  const sceneHeightPercent = canvasScalePercent;
+  const extraSceneHeightPercent = isPeopleMode
+    ? Math.min(180, peopleOverflowRows * 24 + peopleScrollAmount * 40)
+    : 0;
+  const sceneHeightPercent = canvasScalePercent + extraSceneHeightPercent;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
