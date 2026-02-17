@@ -396,7 +396,7 @@ export default function Home() {
           onEnvironmentOverrideChange={updateEnvironmentOverride}
           onCharacterActivate={handleCharacterSelect}
           peopleScrollProgress={peopleScrollProgress}
-          peopleOverflowRows={Math.max(0, activePeopleRows - 2)}
+          peopleExtraCanvasHeightPx={peopleHasOverflow ? Math.round((activePeopleRows - 2) * 160 + peopleScrollProgress * 220) : 0}
         />
       )}
 
