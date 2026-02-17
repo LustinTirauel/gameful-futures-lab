@@ -287,6 +287,7 @@ function DraggableCharacter({
   peopleFinalRotZ,
   peopleFinalY,
   peopleFinalScale,
+  peopleRunAnimationSpeed,
   onArrivalChange,
   onActivate,
 }: {
@@ -309,6 +310,7 @@ function DraggableCharacter({
   peopleFinalRotZ: number;
   peopleFinalY: number;
   peopleFinalScale: number;
+  peopleRunAnimationSpeed: number;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -488,7 +490,7 @@ function DraggableCharacter({
         accessories={config.accessories}
         colors={config.colors}
         hoverBehavior={isPeopleMode ? 'wave' : 'none'}
-        runMotionSpeed={isPeopleMode ? tuning.peopleRunAnimationSpeed : 1}
+        runMotionSpeed={isPeopleMode ? peopleRunAnimationSpeed : 1}
         onActivate={() => {
           if (!editMode && isPeopleMode) {
             onActivate?.(id);
@@ -1201,6 +1203,7 @@ export default function LandingScene3D({
                 peopleFinalRotZ={peopleOverride.rotZ}
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
+                peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
