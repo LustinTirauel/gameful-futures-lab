@@ -411,6 +411,8 @@ export default function Home() {
           }}
         >
           <div>viewport: {sceneDebugInfo.viewportWidthPx} × {sceneDebugInfo.viewportHeightPx}px</div>
+          <div>trigger bottom y: {sceneDebugInfo.triggerBottomPx.toFixed(1)}px</div>
+          <div>stop bottom y: {sceneDebugInfo.stopBottomPx.toFixed(1)}px</div>
           <div>scroll enabled: {String(peopleScrollEnabled)}</div>
           <div>scroll progress: {peopleScrollProgress.toFixed(3)}</div>
           <hr style={{ borderColor: 'rgba(223,240,255,0.3)', margin: '8px 0' }} />
@@ -419,6 +421,7 @@ export default function Home() {
               <strong>{plate.name}</strong> ({plate.id})<br />
               ndc=({plate.ndcX.toFixed(3)}, {plate.ndcY.toFixed(3)})<br />
               screen=({plate.screenX.toFixed(1)}, {plate.screenY.toFixed(1)})<br />
+              bottomNdcY={plate.bottomNdcY.toFixed(3)} bottomPxY={plate.screenBottomY.toFixed(1)}<br />
               world=({plate.worldX.toFixed(2)}, {plate.worldY.toFixed(2)}, {plate.worldZ.toFixed(2)})
             </div>
           ))}

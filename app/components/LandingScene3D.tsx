@@ -251,11 +251,15 @@ export type SceneDebugNameplateInfo = {
   ndcY: number;
   screenX: number;
   screenY: number;
+  bottomNdcY: number;
+  screenBottomY: number;
 };
 
 export type SceneDebugInfo = {
   viewportWidthPx: number;
   viewportHeightPx: number;
+  triggerBottomPx: number;
+  stopBottomPx: number;
   nameplates: SceneDebugNameplateInfo[];
 };
 
@@ -1150,14 +1154,12 @@ export default function LandingScene3D({
   const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
   const maxPeopleRowOffset = Math.max(0, totalRows - 1);
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
-  const peopleVisibleTopNdc = 0.24;
-  const peopleVisibleBottomNdc = -0.55;
   const triggerBottomMarginPx = 10;
   const stopBottomMarginPx = 50;
   const triggerBottomMarginNdc = (triggerBottomMarginPx / Math.max(1, viewportHeightPx)) * 2;
   const stopBottomMarginNdc = (stopBottomMarginPx / Math.max(1, viewportHeightPx)) * 2;
-  const triggerBottomNdc = peopleVisibleBottomNdc + triggerBottomMarginNdc;
-  const stopBottomNdc = peopleVisibleBottomNdc + stopBottomMarginNdc;
+  const triggerBottomNdc = -1 + triggerBottomMarginNdc;
+  const stopBottomNdc = -1 + stopBottomMarginNdc;
   const nameplateForwardOffset = 0.62;
   const nameplateBottomOffsetY = -0.025;
   const peopleSouthFacingY = getScreenSouthYaw(
@@ -1381,6 +1383,7 @@ export default function LandingScene3D({
       };
       const plateWorldX = nameplateBasePosition.x + Math.sin(southFacingY) * 0.62;
       const plateWorldY = -0.42;
+      const plateBottomWorldY = -0.42 - 0.025;
       const plateWorldZ = nameplateBasePosition.z + Math.cos(southFacingY) * 0.62;
       const plateNdc = projectGroundToNdc(
         plateWorldX,
@@ -1391,8 +1394,18 @@ export default function LandingScene3D({
         effectiveTuning.cameraZ,
         effectiveTuning.fov,
       );
+      const plateBottomNdc = projectGroundToNdc(
+        plateWorldX,
+        plateBottomWorldY,
+        plateWorldZ,
+        effectiveTuning.cameraX,
+        effectiveTuning.cameraY,
+        effectiveTuning.cameraZ,
+        effectiveTuning.fov,
+      );
       const screenX = ((plateNdc.x + 1) / 2) * viewportWidthPx;
       const screenY = ((1 - plateNdc.y) / 2) * viewportHeightPx;
+      const screenBottomY = ((1 - plateBottomNdc.y) / 2) * viewportHeightPx;
 
       return {
         id: character.id,
@@ -1404,12 +1417,16 @@ export default function LandingScene3D({
         ndcY: plateNdc.y,
         screenX,
         screenY,
+        bottomNdcY: plateBottomNdc.y,
+        screenBottomY,
       };
     });
 
     onDebugInfoChange({
       viewportWidthPx,
       viewportHeightPx,
+      triggerBottomPx: viewportHeightPx - triggerBottomMarginPx,
+      stopBottomPx: viewportHeightPx - stopBottomMarginPx,
       nameplates,
     });
   }, [
@@ -1429,6 +1446,8 @@ export default function LandingScene3D({
     effectiveTuning,
     viewportWidthPx,
     viewportHeightPx,
+    triggerBottomMarginPx,
+    stopBottomMarginPx,
   ]);
 
   const [, setRelayoutProgress] = useState(1);
