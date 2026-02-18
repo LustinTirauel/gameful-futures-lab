@@ -1031,6 +1031,23 @@ function projectGroundToNdc(
   return { x: ndcPoint.x, y: ndcPoint.y };
 }
 
+function estimateCharacterHalfHeightNdc(
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+  scale: number,
+  cameraX: number,
+  cameraY: number,
+  cameraZ: number,
+  fov: number,
+): number {
+  const safeScale = Math.max(0.2, scale);
+  const sampleHeightWorld = 0.72 * safeScale;
+  const base = projectGroundToNdc(worldX, worldY, worldZ, cameraX, cameraY, cameraZ, fov).y;
+  const top = projectGroundToNdc(worldX, worldY + sampleHeightWorld, worldZ, cameraX, cameraY, cameraZ, fov).y;
+  return Math.abs(top - base);
+}
+
 function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fov: number): number {
   const center = projectNdcToGround(0, 0.02, cameraX, cameraY, cameraZ, fov);
   const lower = projectNdcToGround(0, -0.55, cameraX, cameraY, cameraZ, fov);
@@ -1131,7 +1148,15 @@ export default function LandingScene3D({
 
   if (activeLayoutPreset !== 'custom') {
     for (let index = 0; index < orderedCharacters.length; index += 1) {
-      const { y } = getPeopleLayoutNdc(
+      const character = orderedCharacters[index];
+      const [baseX, baseY, baseZ] = character.config.position;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+      };
+      const layoutNdc = getPeopleLayoutNdc(
         index,
         orderedCharacters.length,
         activeLayoutPreset,
@@ -1139,8 +1164,27 @@ export default function LandingScene3D({
         tuning.peopleLineupSpacing,
         0,
       );
-      peopleLayoutMinY = Math.min(peopleLayoutMinY, y);
-      peopleLayoutMaxY = Math.max(peopleLayoutMaxY, y);
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+        homeOverride.y,
+      );
+      const halfHeightNdc = estimateCharacterHalfHeightNdc(
+        projectedLineupTarget.x,
+        homeOverride.y,
+        projectedLineupTarget.z,
+        homeOverride.scale,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      peopleLayoutMinY = Math.min(peopleLayoutMinY, layoutNdc.y - halfHeightNdc);
+      peopleLayoutMaxY = Math.max(peopleLayoutMaxY, layoutNdc.y + halfHeightNdc);
     }
   }
 
@@ -1150,10 +1194,11 @@ export default function LandingScene3D({
     (peopleLayoutMinY < peopleVisibleBottomNdc || peopleLayoutMaxY > peopleVisibleTopNdc);
 
   let customLayoutMinY = Number.POSITIVE_INFINITY;
+  let customLayoutMaxY = Number.NEGATIVE_INFINITY;
   if (activeLayoutPreset === 'custom') {
     for (const character of orderedCharacters) {
       const [baseX, baseY, baseZ] = character.config.position;
-      const override = tuning.peopleCharacterOverrides[character.id] ?? { x: baseX, y: baseY, z: baseZ };
+      const override = tuning.peopleCharacterOverrides[character.id] ?? { x: baseX, y: baseY, z: baseZ, scale: 1 };
       const customNdc = projectGroundToNdc(
         override.x,
         override.y,
@@ -1163,7 +1208,18 @@ export default function LandingScene3D({
         peopleTargetTuning.cameraZ,
         peopleTargetTuning.fov,
       );
-      customLayoutMinY = Math.min(customLayoutMinY, customNdc.y);
+      const halfHeightNdc = estimateCharacterHalfHeightNdc(
+        override.x,
+        override.y,
+        override.z,
+        override.scale,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      customLayoutMinY = Math.min(customLayoutMinY, customNdc.y - halfHeightNdc);
+      customLayoutMaxY = Math.max(customLayoutMaxY, customNdc.y + halfHeightNdc);
     }
   }
 
@@ -1175,7 +1231,7 @@ export default function LandingScene3D({
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
     editMode &&
-    customScrollRangeNdc > 0.0001;
+    (customScrollRangeNdc > 0.0001 || customLayoutMaxY > peopleVisibleTopNdc);
 
   const peopleScrollEnabled =
     isPeopleMode &&
