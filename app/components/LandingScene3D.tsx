@@ -466,9 +466,12 @@ function DraggableCharacter({
       const baseY = isPeopleMode ? peopleFinalY : override.y;
       groupRef.current.position.y = baseY + bob;
 
-      groupRef.current.rotation.y += (override.rotY - groupRef.current.rotation.y) * 0.12;
-      groupRef.current.rotation.x += (override.rotX - groupRef.current.rotation.x) * 0.12;
-      groupRef.current.rotation.z += (override.rotZ - groupRef.current.rotation.z) * 0.12;
+      const idleRotY = isPeopleMode ? peopleFinalRotY : override.rotY;
+      const idleRotX = isPeopleMode ? peopleFinalRotX : override.rotX;
+      const idleRotZ = isPeopleMode ? peopleFinalRotZ : override.rotZ;
+      groupRef.current.rotation.y += (idleRotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (idleRotX - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (idleRotZ - groupRef.current.rotation.z) * 0.12;
     }
 
     if (isPeopleMode && onWorldPositionChange) {
