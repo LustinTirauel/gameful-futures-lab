@@ -255,6 +255,8 @@ type LandingScene3DProps = {
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
   peopleScrollProgress?: number;
+  peopleScrollAnimated?: boolean;
+  onPeopleScrollEnabledChange?: (enabled: boolean) => void;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -294,6 +296,7 @@ function DraggableCharacter({
   peopleFinalY,
   peopleFinalScale,
   peopleRunAnimationSpeed,
+  peopleScrollAnimated,
   onWorldPositionChange,
   onArrivalChange,
   onActivate,
@@ -319,6 +322,7 @@ function DraggableCharacter({
   peopleFinalY: number;
   peopleFinalScale: number;
   peopleRunAnimationSpeed: number;
+  peopleScrollAnimated: boolean;
   onWorldPositionChange?: (characterId: string, position: { x: number; y: number; z: number }) => void;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
@@ -377,6 +381,36 @@ function DraggableCharacter({
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
+
+    if (isPeopleMode && !peopleScrollAnimated && !editMode) {
+      groupRef.current.position.x += (lineupTarget.x - groupRef.current.position.x) * 0.24;
+      groupRef.current.position.z += (lineupTarget.z - groupRef.current.position.z) * 0.24;
+      groupRef.current.position.y = peopleFinalY;
+
+      if (isRunningInPeople) {
+        setIsRunningInPeople(false);
+      }
+
+      if (isPeopleMode && onWorldPositionChange) {
+        const currentPosition = {
+          x: groupRef.current.position.x,
+          y: groupRef.current.position.y,
+          z: groupRef.current.position.z,
+        };
+        const previousPosition = lastReportedWorldPosition.current;
+        const changedEnough =
+          !previousPosition ||
+          Math.abs(previousPosition.x - currentPosition.x) > 0.01 ||
+          Math.abs(previousPosition.y - currentPosition.y) > 0.01 ||
+          Math.abs(previousPosition.z - currentPosition.z) > 0.01;
+
+        if (changedEnough) {
+          lastReportedWorldPosition.current = currentPosition;
+          onWorldPositionChange(id, currentPosition);
+        }
+      }
+      return;
+    }
 
     const useLayoutTransition = isPeopleMode && peopleTransitionProgress >= 0.999 && isLayoutTransitioning;
     const transitionProgress = useLayoutTransition ? layoutTransitionProgress : peopleTransitionProgress;
@@ -466,6 +500,7 @@ function DraggableCharacter({
       : isPeopleMode
         ? 'idle'
         : movementBehavior;
+  const locomotion = isPeopleMode && !peopleScrollAnimated ? 'idle' : effectiveLocomotion;
 
   return (
     <group
@@ -524,7 +559,7 @@ function DraggableCharacter({
     >
       <PrimitiveCharacter
         pose={shouldUseStandingPose ? 'standing' : config.pose}
-        locomotion={effectiveLocomotion}
+        locomotion={locomotion}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
@@ -995,6 +1030,8 @@ export default function LandingScene3D({
   onEnvironmentOverrideChange,
   onCharacterActivate,
   peopleScrollProgress = 0,
+  peopleScrollAnimated = true,
+  onPeopleScrollEnabledChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1065,6 +1102,13 @@ export default function LandingScene3D({
   const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
   const maxPeopleRowOffset = Math.max(0, totalRows - 1);
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
+  const safeLineupSpacing = Math.max(0.2, Math.min(0.8, tuning.peopleLineupSpacing));
+  const peopleYStep = safeLineupSpacing * 0.77;
+  const visibleRowsEstimate = Math.max(1, Math.floor(1.24 / peopleYStep) + 1);
+  const peopleScrollEnabled =
+    isPeopleMode &&
+    activeLayoutPreset !== 'custom' &&
+    totalRows > visibleRowsEstimate;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1116,6 +1160,10 @@ export default function LandingScene3D({
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, [isPeopleMode, totalTransitionSeconds]);
+
+  useEffect(() => {
+    onPeopleScrollEnabledChange?.(peopleScrollEnabled);
+  }, [onPeopleScrollEnabledChange, peopleScrollEnabled]);
 
 
 
@@ -1306,6 +1354,7 @@ export default function LandingScene3D({
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
                 peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
+                peopleScrollAnimated={peopleScrollAnimated}
                 onWorldPositionChange={(characterId, nextPosition) =>
                   setCharacterWorldPositions((current) => {
                     const previous = current[characterId];

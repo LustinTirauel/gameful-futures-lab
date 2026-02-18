@@ -96,6 +96,8 @@ export default function Home() {
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
   const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
+  const [peopleScrollAnimated, setPeopleScrollAnimated] = useState(true);
+  const [peopleScrollEnabled, setPeopleScrollEnabled] = useState(false);
   const touchStartYRef = useRef(0);
 
   useEffect(() => {
@@ -161,6 +163,7 @@ export default function Home() {
     setSelectedProject(null);
     if (nextMode !== 'people') {
       setPeopleScrollProgress(0);
+      setPeopleScrollEnabled(false);
     }
   }
 
@@ -349,15 +352,15 @@ export default function Home() {
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
         <div
           className="scene-viewport"
-          style={{ height: '100vh', touchAction: mode === 'people' ? 'none' : 'auto' }}
-          onWheel={mode === 'people' ? (event) => {
+          style={{ height: '100vh', touchAction: mode === 'people' && peopleScrollEnabled ? 'none' : 'auto' }}
+          onWheel={mode === 'people' && peopleScrollEnabled ? (event) => {
             event.preventDefault();
             nudgePeopleScrollProgress(event.deltaY * 0.0008);
           } : undefined}
-          onTouchStart={mode === 'people' ? (event) => {
+          onTouchStart={mode === 'people' && peopleScrollEnabled ? (event) => {
             touchStartYRef.current = event.touches[0]?.clientY ?? 0;
           } : undefined}
-          onTouchMove={mode === 'people' ? (event) => {
+          onTouchMove={mode === 'people' && peopleScrollEnabled ? (event) => {
             const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
             const deltaY = touchStartYRef.current - currentY;
             touchStartYRef.current = currentY;
@@ -378,6 +381,8 @@ export default function Home() {
             onEnvironmentOverrideChange={updateEnvironmentOverride}
             onCharacterActivate={handleCharacterSelect}
             peopleScrollProgress={peopleScrollProgress}
+            peopleScrollAnimated={peopleScrollAnimated}
+            onPeopleScrollEnabledChange={setPeopleScrollEnabled}
           />
         </div>
       )}
@@ -404,6 +409,15 @@ export default function Home() {
 
               {mode === 'people' && (
                 <>
+                  <label>
+                    <span>People scroll movement animation</span>
+                    <input
+                      type="checkbox"
+                      checked={peopleScrollAnimated}
+                      onChange={(event) => setPeopleScrollAnimated(event.target.checked)}
+                    />
+                  </label>
+
                   <label>
                     <span>People hue color</span>
                     <input
