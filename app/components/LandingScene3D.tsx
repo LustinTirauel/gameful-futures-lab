@@ -1183,7 +1183,7 @@ export default function LandingScene3D({
   const maxPeopleRowOffset = Math.max(0, totalRows - 1);
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
   const triggerBottomMarginPx = 10;
-  const stopBottomMarginPx = 50;
+  const stopAtScreenYpx = 600;
   const nameplateForwardOffset = 0.62;
   const nameplateBottomOffsetY = -0.025;
   const sceneLayerRect = getSceneLayerRect(
@@ -1196,7 +1196,7 @@ export default function LandingScene3D({
   );
   const viewportBottomPx = viewportHeightPx;
   const triggerBottomPx = viewportBottomPx - triggerBottomMarginPx;
-  const stopBottomPx = viewportBottomPx - stopBottomMarginPx;
+  const stopBottomPx = stopAtScreenYpx;
   const sceneNdcPerPixelY = 2 / Math.max(1, sceneLayerRect.height);
   const peopleSouthFacingY = getScreenSouthYaw(
     peopleTargetTuning.cameraX,
