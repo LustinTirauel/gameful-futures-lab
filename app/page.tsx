@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import CharacterLayer from './components/CharacterLayer';
 import LandingScene3D, {
   defaultSceneTuning,
@@ -36,7 +36,6 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'characterScale', label: 'Character Scale', min: 0.4, max: 1.4, step: 0.01 },
   { key: 'sceneOffsetX', label: 'Scene Offset X (%)', min: -40, max: 20, step: 0.5 },
   { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
-  { key: 'sceneCanvasScale', label: 'Canvas Scale', min: 1, max: 2.6, step: 0.05 },
   { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
   { key: 'ambientLightIntensity', label: 'Ambient Light Intensity', min: 0, max: 2.5, step: 0.05 },
   { key: 'directionalLightIntensity', label: 'Directional Light Intensity', min: 0, max: 3, step: 0.05 },
@@ -46,6 +45,7 @@ const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: numb
   { key: 'preRunTurnSeconds', label: 'People pre-run turn (s)', min: 0, max: 4, step: 0.05 },
   { key: 'runDurationSeconds', label: 'People run duration (s)', min: 0.5, max: 10, step: 0.1 },
   { key: 'peopleRunAnimationSpeed', label: 'People run animation speed', min: 0.6, max: 3, step: 0.05 },
+  { key: 'peopleLineupSpacing', label: 'People lineup spacing', min: 0.2, max: 0.7, step: 0.01 },
 ];
 
 
@@ -59,7 +59,6 @@ const peopleViewKeys: Array<keyof PeopleViewTuning> = [
   'characterScale',
   'sceneOffsetX',
   'sceneOffsetY',
-  'sceneCanvasScale',
   'sceneRadius',
   'ambientLightIntensity',
   'directionalLightIntensity',
@@ -96,6 +95,10 @@ export default function Home() {
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
   const [editMode, setEditMode] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<EditableModelId | null>(null);
+  const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
+  const [peopleScrollAnimated, setPeopleScrollAnimated] = useState(true);
+  const [peopleScrollEnabled, setPeopleScrollEnabled] = useState(false);
+  const touchStartYRef = useRef(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(sceneTuningStorageKey);
@@ -158,6 +161,10 @@ export default function Home() {
     setMode(nextMode);
     setSelectedPerson(null);
     setSelectedProject(null);
+    if (nextMode !== 'people') {
+      setPeopleScrollProgress(0);
+      setPeopleScrollEnabled(false);
+    }
   }
 
   function handleCharacterClick(personId: string) {
@@ -336,23 +343,48 @@ export default function Home() {
     }
   }
 
+  function nudgePeopleScrollProgress(delta: number) {
+    setPeopleScrollProgress((current) => Math.max(0, Math.min(1, current + delta)));
+  }
+
   return (
-    <main className="main">
+    <main className="main" style={{ minHeight: '100vh' }}>
       {(mode === 'home' || mode === 'people') && !scene3DFailed && (
-        <LandingScene3D
-          characters={sceneCharacters}
-          movementBehavior={modeMovementBehavior[mode]}
-          mode={mode}
-          onRuntimeError={handleSceneRuntimeError}
-          tuning={sceneTuning}
-          editMode={editMode}
-          selectedModelId={selectedModelId}
-          onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
-          onCharacterOverrideChange={updateCharacterOverride}
-          onFireOverrideChange={updateFireOverride}
-          onEnvironmentOverrideChange={updateEnvironmentOverride}
-          onCharacterActivate={handleCharacterSelect}
-        />
+        <div
+          className="scene-viewport"
+          style={{ height: '100vh', touchAction: mode === 'people' && peopleScrollEnabled ? 'none' : 'auto' }}
+          onWheel={mode === 'people' && peopleScrollEnabled ? (event) => {
+            event.preventDefault();
+            nudgePeopleScrollProgress(event.deltaY * 0.0008);
+          } : undefined}
+          onTouchStart={mode === 'people' && peopleScrollEnabled ? (event) => {
+            touchStartYRef.current = event.touches[0]?.clientY ?? 0;
+          } : undefined}
+          onTouchMove={mode === 'people' && peopleScrollEnabled ? (event) => {
+            const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
+            const deltaY = touchStartYRef.current - currentY;
+            touchStartYRef.current = currentY;
+            nudgePeopleScrollProgress(deltaY * 0.0025);
+          } : undefined}
+        >
+          <LandingScene3D
+            characters={sceneCharacters}
+            movementBehavior={modeMovementBehavior[mode]}
+            mode={mode}
+            onRuntimeError={handleSceneRuntimeError}
+            tuning={sceneTuning}
+            editMode={editMode}
+            selectedModelId={selectedModelId}
+            onSelectModel={(id) => setSelectedModelId(id as EditableModelId)}
+            onCharacterOverrideChange={updateCharacterOverride}
+            onFireOverrideChange={updateFireOverride}
+            onEnvironmentOverrideChange={updateEnvironmentOverride}
+            onCharacterActivate={handleCharacterSelect}
+            peopleScrollProgress={peopleScrollProgress}
+            peopleScrollAnimated={peopleScrollAnimated}
+            onPeopleScrollEnabledChange={setPeopleScrollEnabled}
+          />
+        </div>
       )}
 
       <TopNav mode={mode} onModeChange={handleModeChange} />
@@ -377,6 +409,15 @@ export default function Home() {
 
               {mode === 'people' && (
                 <>
+                  <label>
+                    <span>People scroll movement animation</span>
+                    <input
+                      type="checkbox"
+                      checked={peopleScrollAnimated}
+                      onChange={(event) => setPeopleScrollAnimated(event.target.checked)}
+                    />
+                  </label>
+
                   <label>
                     <span>People hue color</span>
                     <input

@@ -32,7 +32,9 @@ export type SceneTuning = {
   characterScale: number;
   sceneOffsetX: number;
   sceneOffsetY: number;
-  sceneCanvasScale: number;
+  sceneWorldWidthPx: number;
+  sceneWorldHeightPx: number;
+  sceneViewportHeightVh: number;
   sceneRadius: number;
   ambientLightIntensity: number;
   directionalLightIntensity: number;
@@ -42,6 +44,7 @@ export type SceneTuning = {
   preRunTurnSeconds: number;
   runDurationSeconds: number;
   peopleRunAnimationSpeed: number;
+  peopleLineupSpacing: number;
   characterOverrides: Record<string, ModelOverride>;
   peopleCharacterOverrides: Record<string, ModelOverride>;
   peopleViewTuning: PeopleViewTuning;
@@ -65,7 +68,6 @@ export type PeopleViewTuning = Pick<
   | 'characterScale'
   | 'sceneOffsetX'
   | 'sceneOffsetY'
-  | 'sceneCanvasScale'
   | 'sceneRadius'
   | 'ambientLightIntensity'
   | 'directionalLightIntensity'
@@ -75,16 +77,18 @@ export type PeopleViewTuning = Pick<
 >;
 
 export const defaultSceneTuning: SceneTuning = {
-  cameraX: 7.5,
-  cameraY: 7.2,
-  cameraZ: 7.2,
-  fov: 37,
+  cameraX: 8.3,
+  cameraY: 9.8,
+  cameraZ: 6.4,
+  fov: 56,
   fogNear: 12,
   fogFar: 31,
-  characterScale: 0.78,
-  sceneOffsetX: -10,
+  characterScale: 0.82,
+  sceneOffsetX: -2.5,
   sceneOffsetY: 6,
-  sceneCanvasScale: 1.4,
+  sceneWorldWidthPx: 3840,
+  sceneWorldHeightPx: 2160,
+  sceneViewportHeightVh: 100,
   sceneRadius: 40,
   ambientLightIntensity: 1.45,
   directionalLightIntensity: 0.8,
@@ -94,20 +98,21 @@ export const defaultSceneTuning: SceneTuning = {
   preRunTurnSeconds: 0,
   runDurationSeconds: 0.5,
   peopleRunAnimationSpeed: 1.8,
+  peopleLineupSpacing: 0.36,
   characterOverrides: {
     alex: {
-      x: -3.1122954462698234,
+      x: -3.7972565501845343,
       y: -0.15,
-      z: -3.3427100339320726,
+      z: -3.856442489700469,
       scale: 1,
       rotX: 0.2,
       rotY: 0.52,
       rotZ: 0,
     },
     bea: {
-      x: -3.2145019891733897,
+      x: -2.947567159086291,
       y: -0.25,
-      z: -1.2391295954400698,
+      z: 0.24412264243779713,
       scale: 1,
       rotX: 0,
       rotY: -0.13,
@@ -132,9 +137,9 @@ export const defaultSceneTuning: SceneTuning = {
       rotZ: 0.13,
     },
     eli: {
-      x: 1.7881414864814607,
+      x: 2.367167062338794,
       y: -0.1,
-      z: -0.23296968787807204,
+      z: -0.27363210218138745,
       scale: 0.67,
       rotX: 0.1,
       rotY: 2.36,
@@ -189,17 +194,16 @@ export const defaultSceneTuning: SceneTuning = {
     },
   },
   peopleViewTuning: {
-    cameraX: 6.1,
-    cameraY: 7.4,
-    cameraZ: 5.8,
-    fov: 39,
+    cameraX: 2,
+    cameraY: 8.9,
+    cameraZ: 8.3,
+    fov: 48,
     fogNear: 12,
     fogFar: 31,
-    characterScale: 0.78,
+    characterScale: 0.61,
     sceneOffsetX: 0,
-    sceneOffsetY: -4.5,
-    sceneCanvasScale: 1.4,
-    sceneRadius: 40,
+    sceneOffsetY: 2,
+    sceneRadius: 53,
     ambientLightIntensity: 1.55,
     directionalLightIntensity: 3,
     directionalLightX: 2.6,
@@ -222,13 +226,13 @@ export const defaultSceneTuning: SceneTuning = {
   },
   environmentOverrides: {
     pond: { x: -0.17114555377747376, y: -0.42, z: -7.562215471467024, scale: 3, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-1': { x: -6.487830093617572, y: -0.45, z: -0.16194185467417022, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-2': { x: -4.013044993582884, y: -0.45, z: -4.121256646007296, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-1': { x: -7.51394946956863, y: -0.45, z: 1.1474303587990686, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-2': { x: -4.479986239403276, y: -0.45, z: -4.700150995633615, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-3': { x: 0.9703599180581204, y: -0.45, z: 2.066643086549372, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     'tree-4': { x: 1.3835422089303613, y: -0.45, z: -2.238627927351077, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
-    'tree-5': { x: -4.265002239085487, y: -0.45, z: -1.0353432942222807, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
+    'tree-5': { x: -4.282255508950452, y: -0.45, z: 0.20798895550017327, scale: 1, rotX: 0, rotY: 0, rotZ: 0 },
     sauna: { x: 3.32394602031734, y: -0.45, z: -3.0912259625868606, scale: 0.76, rotX: 0.02, rotY: 0.82, rotZ: 0 },
-    logs: { x: -4.710761635476089, y: 0, z: 2.1765379563757516, scale: 1, rotX: 0, rotY: 0.79, rotZ: 0 },
+    logs: { x: -5.193524079396518, y: 0, z: 3.8263431342249357, scale: 1, rotX: 0, rotY: 0.79, rotZ: 0 },
   },
 };
 
@@ -250,6 +254,9 @@ type LandingScene3DProps = {
   onEnvironmentOverrideChange?: (modelId: string, override: ModelOverride) => void;
   onFireOverrideChange?: (override: ModelOverride) => void;
   onCharacterActivate?: (characterId: string) => void;
+  peopleScrollProgress?: number;
+  peopleScrollAnimated?: boolean;
+  onPeopleScrollEnabledChange?: (enabled: boolean) => void;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -269,6 +276,7 @@ function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number;
 
 function DraggableCharacter({
   id,
+  name,
   config,
   movementBehavior,
   override,
@@ -288,10 +296,13 @@ function DraggableCharacter({
   peopleFinalY,
   peopleFinalScale,
   peopleRunAnimationSpeed,
+  peopleScrollAnimated,
+  onWorldPositionChange,
   onArrivalChange,
   onActivate,
 }: {
   id: string;
+  name: string;
   config: CharacterConfig;
   movementBehavior: MovementBehavior;
   override: ModelOverride;
@@ -311,6 +322,8 @@ function DraggableCharacter({
   peopleFinalY: number;
   peopleFinalScale: number;
   peopleRunAnimationSpeed: number;
+  peopleScrollAnimated: boolean;
+  onWorldPositionChange?: (characterId: string, position: { x: number; y: number; z: number }) => void;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -325,6 +338,8 @@ function DraggableCharacter({
   const [isRunningInPeople, setIsRunningInPeople] = useState(false);
   const [layoutTransitionProgress, setLayoutTransitionProgress] = useState(1);
   const [isLayoutTransitioning, setIsLayoutTransitioning] = useState(false);
+  const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
+  const lastReportedWorldPosition = useRef<{ x: number; y: number; z: number } | null>(null);
 
   useEffect(() => {
     targetPosition.current = { x: override.x, z: override.z };
@@ -366,6 +381,36 @@ function DraggableCharacter({
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
+
+    if (isPeopleMode && !peopleScrollAnimated && !editMode) {
+      groupRef.current.position.x += (lineupTarget.x - groupRef.current.position.x) * 0.24;
+      groupRef.current.position.z += (lineupTarget.z - groupRef.current.position.z) * 0.24;
+      groupRef.current.position.y = peopleFinalY;
+
+      if (isRunningInPeople) {
+        setIsRunningInPeople(false);
+      }
+
+      if (isPeopleMode && onWorldPositionChange) {
+        const currentPosition = {
+          x: groupRef.current.position.x,
+          y: groupRef.current.position.y,
+          z: groupRef.current.position.z,
+        };
+        const previousPosition = lastReportedWorldPosition.current;
+        const changedEnough =
+          !previousPosition ||
+          Math.abs(previousPosition.x - currentPosition.x) > 0.01 ||
+          Math.abs(previousPosition.y - currentPosition.y) > 0.01 ||
+          Math.abs(previousPosition.z - currentPosition.z) > 0.01;
+
+        if (changedEnough) {
+          lastReportedWorldPosition.current = currentPosition;
+          onWorldPositionChange(id, currentPosition);
+        }
+      }
+      return;
+    }
 
     const useLayoutTransition = isPeopleMode && peopleTransitionProgress >= 0.999 && isLayoutTransitioning;
     const transitionProgress = useLayoutTransition ? layoutTransitionProgress : peopleTransitionProgress;
@@ -421,13 +466,34 @@ function DraggableCharacter({
       const baseY = isPeopleMode ? peopleFinalY : override.y;
       groupRef.current.position.y = baseY + bob;
 
-      groupRef.current.rotation.y += (override.rotY - groupRef.current.rotation.y) * 0.12;
-      groupRef.current.rotation.x += (override.rotX - groupRef.current.rotation.x) * 0.12;
-      groupRef.current.rotation.z += (override.rotZ - groupRef.current.rotation.z) * 0.12;
+      const idleRotY = isPeopleMode ? peopleFinalRotY : override.rotY;
+      const idleRotX = isPeopleMode ? peopleFinalRotX : override.rotX;
+      const idleRotZ = isPeopleMode ? peopleFinalRotZ : override.rotZ;
+      groupRef.current.rotation.y += (idleRotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (idleRotX - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (idleRotZ - groupRef.current.rotation.z) * 0.12;
+    }
+
+    if (isPeopleMode && onWorldPositionChange) {
+      const currentPosition = {
+        x: groupRef.current.position.x,
+        y: groupRef.current.position.y,
+        z: groupRef.current.position.z,
+      };
+      const previousPosition = lastReportedWorldPosition.current;
+      const changedEnough =
+        !previousPosition ||
+        Math.abs(previousPosition.x - currentPosition.x) > 0.01 ||
+        Math.abs(previousPosition.y - currentPosition.y) > 0.01 ||
+        Math.abs(previousPosition.z - currentPosition.z) > 0.01;
+
+      if (changedEnough) {
+        lastReportedWorldPosition.current = currentPosition;
+        onWorldPositionChange(id, currentPosition);
+      }
     }
   });
 
-  const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
   const isSceneTransitionActive = peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
   const shouldUseStandingPose = isPeopleMode || isSceneTransitionActive;
   const effectiveLocomotion = isSceneTransitionActive
@@ -437,6 +503,7 @@ function DraggableCharacter({
       : isPeopleMode
         ? 'idle'
         : movementBehavior;
+  const locomotion = isPeopleMode && !peopleScrollAnimated ? 'idle' : effectiveLocomotion;
 
   return (
     <group
@@ -495,7 +562,7 @@ function DraggableCharacter({
     >
       <PrimitiveCharacter
         pose={shouldUseStandingPose ? 'standing' : config.pose}
-        locomotion={effectiveLocomotion}
+        locomotion={locomotion}
         rotation={config.rotation}
         headShape={config.headShape}
         bodyShape={config.bodyShape}
@@ -893,19 +960,27 @@ function getLineupTarget(index: number, total: number, columns = 3): { xIndex: n
   return { xIndex, row, itemsInRow };
 }
 
-function getPeopleLayoutNdc(index: number, total: number, preset: PeopleLayoutPreset, columns: number): { x: number; y: number } {
+function getPeopleLayoutNdc(
+  index: number,
+  total: number,
+  preset: PeopleLayoutPreset,
+  columns: number,
+  spacing: number,
+  rowOffset: number,
+): { x: number; y: number } {
   if (preset === 'custom') {
     return { x: 0, y: 0 };
   }
 
   const safeColumns = Math.max(1, Math.round(columns));
+  const safeSpacing = Math.max(0.2, Math.min(0.8, spacing));
   const slot = getLineupTarget(index, total, safeColumns);
   const rowCenter = (slot.itemsInRow - 1) / 2;
-  const xSpacing = 0.52;
-  const yStep = 0.4;
+  const xSpacing = safeSpacing;
+  const yStep = safeSpacing * 0.77;
   const x = (slot.xIndex - rowCenter) * xSpacing;
   const yStart = 0.24;
-  const y = yStart - slot.row * yStep;
+  const y = yStart - (slot.row - rowOffset) * yStep;
 
   return { x, y };
 }
@@ -957,6 +1032,9 @@ export default function LandingScene3D({
   onFireOverrideChange,
   onEnvironmentOverrideChange,
   onCharacterActivate,
+  peopleScrollProgress = 0,
+  peopleScrollAnimated = true,
+  onPeopleScrollEnabledChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1007,11 +1085,6 @@ export default function LandingScene3D({
     characterScale: lerpNumber(tuning.characterScale, peopleTargetTuning.characterScale, peopleTransitionProgress),
     sceneOffsetX: lerpNumber(tuning.sceneOffsetX, peopleTargetTuning.sceneOffsetX, peopleTransitionProgress),
     sceneOffsetY: lerpNumber(tuning.sceneOffsetY, peopleTargetTuning.sceneOffsetY, peopleTransitionProgress),
-    sceneCanvasScale: lerpNumber(
-      tuning.sceneCanvasScale,
-      peopleTargetTuning.sceneCanvasScale,
-      peopleTransitionProgress,
-    ),
     sceneRadius: lerpNumber(tuning.sceneRadius, peopleTargetTuning.sceneRadius, peopleTransitionProgress),
     ambientLightIntensity: lerpNumber(
       tuning.ambientLightIntensity,
@@ -1027,10 +1100,40 @@ export default function LandingScene3D({
     directionalLightY: lerpNumber(tuning.directionalLightY, peopleTargetTuning.directionalLightY, peopleTransitionProgress),
     directionalLightZ: lerpNumber(tuning.directionalLightZ, peopleTargetTuning.directionalLightZ, peopleTransitionProgress),
   };
-  const canvasScalePercent = effectiveTuning.sceneCanvasScale * 100;
-  const canvasInsetPercent = (100 - canvasScalePercent) / 2;
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
+  const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
+  const maxPeopleRowOffset = Math.max(0, totalRows - 1);
+  const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
+  const peopleVisibleTopNdc = 0.24;
+  const peopleVisibleBottomNdc = -0.55;
+  let peopleLayoutMinY = Number.POSITIVE_INFINITY;
+  let peopleLayoutMaxY = Number.NEGATIVE_INFINITY;
+
+  if (activeLayoutPreset !== 'custom') {
+    for (let index = 0; index < orderedCharacters.length; index += 1) {
+      const { y } = getPeopleLayoutNdc(
+        index,
+        orderedCharacters.length,
+        activeLayoutPreset,
+        activeLayoutColumns,
+        tuning.peopleLineupSpacing,
+        0,
+      );
+      peopleLayoutMinY = Math.min(peopleLayoutMinY, y);
+      peopleLayoutMaxY = Math.max(peopleLayoutMaxY, y);
+    }
+  }
+
+  const peopleLayoutOverflowsViewport =
+    activeLayoutPreset !== 'custom' &&
+    Number.isFinite(peopleLayoutMinY) &&
+    (peopleLayoutMinY < peopleVisibleBottomNdc || peopleLayoutMaxY > peopleVisibleTopNdc);
+
+  const peopleScrollEnabled =
+    isPeopleMode &&
+    activeLayoutPreset !== 'custom' &&
+    peopleLayoutOverflowsViewport;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1048,6 +1151,9 @@ export default function LandingScene3D({
   const southFacingY = getScreenSouthYaw(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ, effectiveTuning.fov);
   const decorAlpha = 1 - peopleTransitionProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
+  const [characterWorldPositions, setCharacterWorldPositions] = useState<
+    Record<string, { x: number; y: number; z: number }>
+  >({});
 
 
   useEffect(() => {
@@ -1079,6 +1185,10 @@ export default function LandingScene3D({
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, [isPeopleMode, totalTransitionSeconds]);
+
+  useEffect(() => {
+    onPeopleScrollEnabledChange?.(peopleScrollEnabled);
+  }, [onPeopleScrollEnabledChange, peopleScrollEnabled]);
 
 
 
@@ -1128,17 +1238,11 @@ export default function LandingScene3D({
   }
 
   return (
-    <div
-      className="scene-layer"
-      style={{
-        width: `${canvasScalePercent}%`,
-        height: `${canvasScalePercent}%`,
-        left: `${canvasInsetPercent}%`,
-        top: `${canvasInsetPercent}%`,
-        transform: `translate(${effectiveTuning.sceneOffsetX}%, ${effectiveTuning.sceneOffsetY}%)`,
-      }}
-      aria-hidden="true"
-    >
+    <div className="scene-layer" style={{
+      width: `${tuning.sceneWorldWidthPx}px`,
+      height: `${tuning.sceneWorldHeightPx}px`,
+      transform: `translate(calc(-50% + ${effectiveTuning.sceneOffsetX}%), calc(-50% + ${effectiveTuning.sceneOffsetY}%))`,
+    }} aria-hidden="true">
       <Canvas
         camera={{ position: [effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ], fov: effectiveTuning.fov }}
         shadows
@@ -1195,7 +1299,14 @@ export default function LandingScene3D({
             rotZ: baseRotZ,
           };
 
-          const layoutNdc = getPeopleLayoutNdc(index, orderedCharacters.length, activeLayoutPreset, activeLayoutColumns);
+          const layoutNdc = getPeopleLayoutNdc(
+            index,
+            orderedCharacters.length,
+            activeLayoutPreset,
+            activeLayoutColumns,
+            tuning.peopleLineupSpacing,
+            peopleRowOffset,
+          );
           const ndcX = layoutNdc.x;
           const ndcY = layoutNdc.y;
           const projectedLineupTarget = projectNdcToGround(
@@ -1223,23 +1334,32 @@ export default function LandingScene3D({
               : projectedLineupTarget
             : projectedLineupTarget;
           const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
+          const nameplateBasePosition = characterWorldPositions[character.id] ?? {
+            x: lineupTarget.x,
+            y: peopleOverride.y,
+            z: lineupTarget.z,
+          };
+          const nameplateForwardOffset = 0.62;
+          const nameplatePosition: [number, number, number] = [
+            nameplateBasePosition.x + Math.sin(southFacingY) * nameplateForwardOffset,
+            -0.42,
+            nameplateBasePosition.z + Math.cos(southFacingY) * nameplateForwardOffset,
+          ];
+          const nameplateOpacity = editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0;
 
           return (
             <group key={character.id}>
               {isPeopleMode && (
                 <NamePlate3D
                   name={character.name}
-                  position={[
-                    lineupTarget.x + Math.sin(southFacingY) * 0.56,
-                    -0.42,
-                    lineupTarget.z + Math.cos(southFacingY) * 0.56,
-                  ]}
+                  position={nameplatePosition}
                   rotationY={southFacingY}
-                  opacity={editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0}
+                  opacity={nameplateOpacity}
                 />
               )}
               <DraggableCharacter
                 id={character.id}
+                name={character.name}
                 config={character.config}
                 movementBehavior={movementBehavior}
                 editMode={editMode}
@@ -1259,6 +1379,21 @@ export default function LandingScene3D({
                 peopleFinalY={peopleOverride.y}
                 peopleFinalScale={peopleOverride.scale}
                 peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
+                peopleScrollAnimated={peopleScrollAnimated}
+                onWorldPositionChange={(characterId, nextPosition) =>
+                  setCharacterWorldPositions((current) => {
+                    const previous = current[characterId];
+                    if (
+                      previous &&
+                      Math.abs(previous.x - nextPosition.x) < 0.001 &&
+                      Math.abs(previous.y - nextPosition.y) < 0.001 &&
+                      Math.abs(previous.z - nextPosition.z) < 0.001
+                    ) {
+                      return current;
+                    }
+                    return { ...current, [characterId]: nextPosition };
+                  })
+                }
                 onArrivalChange={(characterId, arrived) =>
                   setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
                 }
