@@ -1130,12 +1130,13 @@ export default function LandingScene3D({
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
   const peopleVisibleTopNdc = 0.24;
   const peopleVisibleBottomNdc = -0.55;
-  const overflowMarginPx = 10;
-  const overflowMarginNdc = (overflowMarginPx / Math.max(1, viewportHeightPx)) * 2;
-  const triggerTopNdc = peopleVisibleTopNdc - overflowMarginNdc;
-  const triggerBottomNdc = peopleVisibleBottomNdc + overflowMarginNdc;
+  const triggerBottomMarginPx = 10;
+  const stopBottomMarginPx = 50;
+  const triggerBottomMarginNdc = (triggerBottomMarginPx / Math.max(1, viewportHeightPx)) * 2;
+  const stopBottomMarginNdc = (stopBottomMarginPx / Math.max(1, viewportHeightPx)) * 2;
+  const triggerBottomNdc = peopleVisibleBottomNdc + triggerBottomMarginNdc;
+  const stopBottomNdc = peopleVisibleBottomNdc + stopBottomMarginNdc;
   const nameplateForwardOffset = 0.62;
-  const nameplateTopOffsetY = 0.038;
   const nameplateBottomOffsetY = -0.025;
   const peopleSouthFacingY = getScreenSouthYaw(
     peopleTargetTuning.cameraX,
@@ -1144,8 +1145,7 @@ export default function LandingScene3D({
     peopleTargetTuning.fov,
   );
 
-  let peopleLayoutMinY = Number.POSITIVE_INFINITY;
-  let peopleLayoutMaxY = Number.NEGATIVE_INFINITY;
+  let peopleLayoutMinBottomY = Number.POSITIVE_INFINITY;
 
   if (activeLayoutPreset !== 'custom') {
     for (let index = 0; index < orderedCharacters.length; index += 1) {
@@ -1176,15 +1176,6 @@ export default function LandingScene3D({
       );
       const plateX = projectedLineupTarget.x + Math.sin(peopleSouthFacingY) * nameplateForwardOffset;
       const plateZ = projectedLineupTarget.z + Math.cos(peopleSouthFacingY) * nameplateForwardOffset;
-      const plateTopNdc = projectGroundToNdc(
-        plateX,
-        -0.42 + nameplateTopOffsetY,
-        plateZ,
-        peopleTargetTuning.cameraX,
-        peopleTargetTuning.cameraY,
-        peopleTargetTuning.cameraZ,
-        peopleTargetTuning.fov,
-      ).y;
       const plateBottomNdc = projectGroundToNdc(
         plateX,
         -0.42 + nameplateBottomOffsetY,
@@ -1194,33 +1185,22 @@ export default function LandingScene3D({
         peopleTargetTuning.cameraZ,
         peopleTargetTuning.fov,
       ).y;
-      peopleLayoutMinY = Math.min(peopleLayoutMinY, plateBottomNdc);
-      peopleLayoutMaxY = Math.max(peopleLayoutMaxY, plateTopNdc);
+      peopleLayoutMinBottomY = Math.min(peopleLayoutMinBottomY, plateBottomNdc);
     }
   }
 
   const peopleLayoutOverflowsViewport =
     activeLayoutPreset !== 'custom' &&
-    Number.isFinite(peopleLayoutMinY) &&
-    (peopleLayoutMinY < triggerBottomNdc || peopleLayoutMaxY > triggerTopNdc);
+    Number.isFinite(peopleLayoutMinBottomY) &&
+    peopleLayoutMinBottomY < triggerBottomNdc;
 
-  let customLayoutMinY = Number.POSITIVE_INFINITY;
-  let customLayoutMaxY = Number.NEGATIVE_INFINITY;
+  let customLayoutMinBottomY = Number.POSITIVE_INFINITY;
   if (activeLayoutPreset === 'custom') {
     for (const character of orderedCharacters) {
       const [baseX, baseY, baseZ] = character.config.position;
       const override = tuning.peopleCharacterOverrides[character.id] ?? { x: baseX, y: baseY, z: baseZ, scale: 1 };
       const plateX = override.x + Math.sin(peopleSouthFacingY) * nameplateForwardOffset;
       const plateZ = override.z + Math.cos(peopleSouthFacingY) * nameplateForwardOffset;
-      const plateTopNdc = projectGroundToNdc(
-        plateX,
-        -0.42 + nameplateTopOffsetY,
-        plateZ,
-        peopleTargetTuning.cameraX,
-        peopleTargetTuning.cameraY,
-        peopleTargetTuning.cameraZ,
-        peopleTargetTuning.fov,
-      ).y;
       const plateBottomNdc = projectGroundToNdc(
         plateX,
         -0.42 + nameplateBottomOffsetY,
@@ -1230,24 +1210,23 @@ export default function LandingScene3D({
         peopleTargetTuning.cameraZ,
         peopleTargetTuning.fov,
       ).y;
-      customLayoutMinY = Math.min(customLayoutMinY, plateBottomNdc);
-      customLayoutMaxY = Math.max(customLayoutMaxY, plateTopNdc);
+      customLayoutMinBottomY = Math.min(customLayoutMinBottomY, plateBottomNdc);
     }
   }
 
-  const customBottomOverflowNdc =
-    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinY)
-      ? Math.max(0, triggerBottomNdc - customLayoutMinY)
+  const customBottomTriggerOverflowNdc =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinBottomY)
+      ? Math.max(0, triggerBottomNdc - customLayoutMinBottomY)
       : 0;
-  const customTopOverflowNdc =
-    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxY)
-      ? Math.max(0, customLayoutMaxY - triggerTopNdc)
+  const customBottomStopOverflowNdc =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinBottomY)
+      ? Math.max(0, stopBottomNdc - customLayoutMinBottomY)
       : 0;
-  const customScrollRangeNdc = customBottomOverflowNdc + customTopOverflowNdc;
+  const customScrollRangeNdc = customBottomStopOverflowNdc;
   const customPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
-    customScrollRangeNdc > 0.0001;
+    customBottomTriggerOverflowNdc > 0.0001;
 
   const peopleScrollEnabled =
     isPeopleMode &&
@@ -1449,7 +1428,7 @@ export default function LandingScene3D({
           const peopleOverride = rawPeopleOverride;
           const isCustomLayout = activeLayoutPreset === 'custom';
           const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
-          const customScrollOffsetNdc = isCustomLayout ? (peopleScrollProgress * customScrollRangeNdc - customTopOverflowNdc) : 0;
+          const customScrollOffsetNdc = isCustomLayout ? peopleScrollProgress * customScrollRangeNdc : 0;
           const customLineupTarget = (() => {
             const customNdc = projectGroundToNdc(
               peopleOverride.x,
