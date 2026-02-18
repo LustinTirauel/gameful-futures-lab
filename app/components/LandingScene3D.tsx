@@ -1045,7 +1045,8 @@ function estimateCharacterHalfHeightNdc(
   const sampleHeightWorld = 0.72 * safeScale;
   const base = projectGroundToNdc(worldX, worldY, worldZ, cameraX, cameraY, cameraZ, fov).y;
   const top = projectGroundToNdc(worldX, worldY + sampleHeightWorld, worldZ, cameraX, cameraY, cameraZ, fov).y;
-  return Math.abs(top - base);
+  const fullHeightNdc = Math.abs(top - base);
+  return fullHeightNdc * 0.5;
 }
 
 function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fov: number): number {
@@ -1143,6 +1144,7 @@ export default function LandingScene3D({
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
   const peopleVisibleTopNdc = 0.24;
   const peopleVisibleBottomNdc = -0.55;
+  const overflowToleranceNdc = 0.01;
   let peopleLayoutMinY = Number.POSITIVE_INFINITY;
   let peopleLayoutMaxY = Number.NEGATIVE_INFINITY;
 
@@ -1191,7 +1193,8 @@ export default function LandingScene3D({
   const peopleLayoutOverflowsViewport =
     activeLayoutPreset !== 'custom' &&
     Number.isFinite(peopleLayoutMinY) &&
-    (peopleLayoutMinY < peopleVisibleBottomNdc || peopleLayoutMaxY > peopleVisibleTopNdc);
+    (peopleLayoutMinY < peopleVisibleBottomNdc - overflowToleranceNdc ||
+      peopleLayoutMaxY > peopleVisibleTopNdc + overflowToleranceNdc);
 
   let customLayoutMinY = Number.POSITIVE_INFINITY;
   let customLayoutMaxY = Number.NEGATIVE_INFINITY;
@@ -1223,15 +1226,19 @@ export default function LandingScene3D({
     }
   }
 
-  const customScrollRangeNdc =
+  const customBottomOverflowNdc =
     activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinY)
-      ? Math.max(0, peopleVisibleBottomNdc - customLayoutMinY)
+      ? Math.max(0, (peopleVisibleBottomNdc - overflowToleranceNdc) - customLayoutMinY)
       : 0;
+  const customTopOverflowNdc =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxY)
+      ? Math.max(0, customLayoutMaxY - (peopleVisibleTopNdc + overflowToleranceNdc))
+      : 0;
+  const customScrollRangeNdc = customBottomOverflowNdc + customTopOverflowNdc;
   const customPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
-    editMode &&
-    (customScrollRangeNdc > 0.0001 || customLayoutMaxY > peopleVisibleTopNdc);
+    customScrollRangeNdc > 0.0001;
 
   const peopleScrollEnabled =
     isPeopleMode &&
@@ -1433,7 +1440,7 @@ export default function LandingScene3D({
           const peopleOverride = rawPeopleOverride;
           const isCustomLayout = activeLayoutPreset === 'custom';
           const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
-          const customScrollOffsetNdc = isCustomLayout ? peopleScrollProgress * customScrollRangeNdc : 0;
+          const customScrollOffsetNdc = isCustomLayout ? (peopleScrollProgress * customScrollRangeNdc - customTopOverflowNdc) : 0;
           const customLineupTarget = (() => {
             const customNdc = projectGroundToNdc(
               peopleOverride.x,
