@@ -324,6 +324,7 @@ function DraggableCharacter({
   onActivate?: (characterId: string) => void;
 }) {
   const groupRef = useRef<Group>(null);
+  const nameplateRef = useRef<Group>(null);
   const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
   const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
@@ -434,6 +435,15 @@ function DraggableCharacter({
       groupRef.current.rotation.x += (override.rotX - groupRef.current.rotation.x) * 0.12;
       groupRef.current.rotation.z += (override.rotZ - groupRef.current.rotation.z) * 0.12;
     }
+
+    if (isPeopleMode && nameplateRef.current) {
+      const currentRot = groupRef.current.rotation;
+      nameplateRef.current.rotation.set(
+        -currentRot.x,
+        southFacingY - currentRot.y,
+        -currentRot.z,
+      );
+    }
   });
 
   const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
@@ -520,12 +530,14 @@ function DraggableCharacter({
         }}
       />
       {isPeopleMode && (
-        <NamePlate3D
-          name={name}
-          position={[0, -0.42, 0.56]}
-          rotationY={0}
-          opacity={nameplateOpacity}
-        />
+        <group ref={nameplateRef}>
+          <NamePlate3D
+            name={name}
+            position={[0, -0.42, 0.56]}
+            rotationY={0}
+            opacity={nameplateOpacity}
+          />
+        </group>
       )}
       {selected && editMode && (
         <mesh position={[0, 1.05, 0]}>
