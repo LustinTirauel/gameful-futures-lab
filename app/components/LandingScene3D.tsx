@@ -1102,13 +1102,35 @@ export default function LandingScene3D({
   const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
   const maxPeopleRowOffset = Math.max(0, totalRows - 1);
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
-  const safeLineupSpacing = Math.max(0.2, Math.min(0.8, tuning.peopleLineupSpacing));
-  const peopleYStep = safeLineupSpacing * 0.77;
-  const visibleRowsEstimate = Math.max(1, Math.floor(1.24 / peopleYStep) + 1);
+  const peopleVisibleTopNdc = 0.24;
+  const peopleVisibleBottomNdc = -0.55;
+  let peopleLayoutMinY = Number.POSITIVE_INFINITY;
+  let peopleLayoutMaxY = Number.NEGATIVE_INFINITY;
+
+  if (activeLayoutPreset !== 'custom') {
+    for (let index = 0; index < orderedCharacters.length; index += 1) {
+      const { y } = getPeopleLayoutNdc(
+        index,
+        orderedCharacters.length,
+        activeLayoutPreset,
+        activeLayoutColumns,
+        tuning.peopleLineupSpacing,
+        0,
+      );
+      peopleLayoutMinY = Math.min(peopleLayoutMinY, y);
+      peopleLayoutMaxY = Math.max(peopleLayoutMaxY, y);
+    }
+  }
+
+  const peopleLayoutOverflowsViewport =
+    activeLayoutPreset !== 'custom' &&
+    Number.isFinite(peopleLayoutMinY) &&
+    (peopleLayoutMinY < peopleVisibleBottomNdc || peopleLayoutMaxY > peopleVisibleTopNdc);
+
   const peopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset !== 'custom' &&
-    totalRows > visibleRowsEstimate;
+    peopleLayoutOverflowsViewport;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
