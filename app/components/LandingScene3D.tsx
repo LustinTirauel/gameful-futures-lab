@@ -274,6 +274,7 @@ function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number;
 
 function DraggableCharacter({
   id,
+  name,
   config,
   movementBehavior,
   override,
@@ -293,10 +294,12 @@ function DraggableCharacter({
   peopleFinalY,
   peopleFinalScale,
   peopleRunAnimationSpeed,
+  nameplateOpacity,
   onArrivalChange,
   onActivate,
 }: {
   id: string;
+  name: string;
   config: CharacterConfig;
   movementBehavior: MovementBehavior;
   override: ModelOverride;
@@ -316,6 +319,7 @@ function DraggableCharacter({
   peopleFinalY: number;
   peopleFinalScale: number;
   peopleRunAnimationSpeed: number;
+  nameplateOpacity: number;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
@@ -515,6 +519,14 @@ function DraggableCharacter({
           }
         }}
       />
+      {isPeopleMode && (
+        <NamePlate3D
+          name={name}
+          position={[0, -0.42, 0.56]}
+          rotationY={0}
+          opacity={nameplateOpacity}
+        />
+      )}
       {selected && editMode && (
         <mesh position={[0, 1.05, 0]}>
           <sphereGeometry args={[0.07, 12, 12]} />
@@ -1236,46 +1248,35 @@ export default function LandingScene3D({
           const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
 
           return (
-            <group key={character.id}>
-              {isPeopleMode && (
-                <NamePlate3D
-                  name={character.name}
-                  position={[
-                    lineupTarget.x + Math.sin(southFacingY) * 0.56,
-                    -0.42,
-                    lineupTarget.z + Math.cos(southFacingY) * 0.56,
-                  ]}
-                  rotationY={southFacingY}
-                  opacity={editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0}
-                />
-              )}
-              <DraggableCharacter
-                id={character.id}
-                config={character.config}
-                movementBehavior={movementBehavior}
-                editMode={editMode}
-                selected={selectedModelId === character.id}
-                onSelect={(id) => onSelectModel?.(id)}
-                onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
-                override={activeOverride}
-                globalCharacterScale={effectiveTuning.characterScale}
-                lineupTarget={lineupTarget}
-                isPeopleMode={isPeopleMode}
-                southFacingY={southFacingY}
-                peopleTransitionProgress={peopleTransitionProgress}
-                totalTransitionSeconds={totalTransitionSeconds}
-                peopleFinalRotX={peopleOverride.rotX}
-                peopleFinalRotY={peopleOverride.rotY}
-                peopleFinalRotZ={peopleOverride.rotZ}
-                peopleFinalY={peopleOverride.y}
-                peopleFinalScale={peopleOverride.scale}
-                peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
-                onArrivalChange={(characterId, arrived) =>
-                  setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
-                }
-                onActivate={onCharacterActivate}
-              />
-            </group>
+            <DraggableCharacter
+              key={character.id}
+              id={character.id}
+              name={character.name}
+              config={character.config}
+              movementBehavior={movementBehavior}
+              editMode={editMode}
+              selected={selectedModelId === character.id}
+              onSelect={(id) => onSelectModel?.(id)}
+              onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
+              override={activeOverride}
+              globalCharacterScale={effectiveTuning.characterScale}
+              lineupTarget={lineupTarget}
+              isPeopleMode={isPeopleMode}
+              southFacingY={southFacingY}
+              peopleTransitionProgress={peopleTransitionProgress}
+              totalTransitionSeconds={totalTransitionSeconds}
+              peopleFinalRotX={peopleOverride.rotX}
+              peopleFinalRotY={peopleOverride.rotY}
+              peopleFinalRotZ={peopleOverride.rotZ}
+              peopleFinalY={peopleOverride.y}
+              peopleFinalScale={peopleOverride.scale}
+              peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
+              nameplateOpacity={editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0}
+              onArrivalChange={(characterId, arrived) =>
+                setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
+              }
+              onActivate={onCharacterActivate}
+            />
           );
         })}
       </Canvas>
