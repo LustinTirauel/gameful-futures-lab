@@ -1108,6 +1108,11 @@ export default function LandingScene3D({
   onDebugInfoChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
+  const runtimeErrorHandlerRef = useRef(onRuntimeError);
+
+  useEffect(() => {
+    runtimeErrorHandlerRef.current = onRuntimeError;
+  }, [onRuntimeError]);
 
   useEffect(() => {
     try {
@@ -1117,13 +1122,13 @@ export default function LandingScene3D({
       setIsWebGLAvailable(available);
 
       if (!available) {
-        onRuntimeError?.();
+        runtimeErrorHandlerRef.current?.();
       }
     } catch {
       setIsWebGLAvailable(false);
-      onRuntimeError?.();
+      runtimeErrorHandlerRef.current?.();
     }
-  }, [onRuntimeError]);
+  }, []);
 
   const orderedCharacters = useMemo(
     () => [...characters].sort((a, b) => a.id.localeCompare(b.id)),
