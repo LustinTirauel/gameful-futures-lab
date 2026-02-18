@@ -411,6 +411,7 @@ export default function Home() {
           }}
         >
           <div>viewport: {sceneDebugInfo.viewportWidthPx} × {sceneDebugInfo.viewportHeightPx}px</div>
+          <div>scene layer y: {sceneDebugInfo.sceneLayerTopPx.toFixed(1)} → {sceneDebugInfo.sceneLayerBottomPx.toFixed(1)}px</div>
           <div>trigger bottom y: {sceneDebugInfo.triggerBottomPx.toFixed(1)}px</div>
           <div>stop bottom y: {sceneDebugInfo.stopBottomPx.toFixed(1)}px</div>
           <div>scroll enabled: {String(peopleScrollEnabled)}</div>

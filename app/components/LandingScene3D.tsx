@@ -258,6 +258,8 @@ export type SceneDebugNameplateInfo = {
 export type SceneDebugInfo = {
   viewportWidthPx: number;
   viewportHeightPx: number;
+  sceneLayerTopPx: number;
+  sceneLayerBottomPx: number;
   triggerBottomPx: number;
   stopBottomPx: number;
   nameplates: SceneDebugNameplateInfo[];
@@ -1060,6 +1062,32 @@ function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fo
   return Math.atan2(lower.x - center.x, lower.z - center.z);
 }
 
+function getSceneLayerRect(
+  viewportWidthPx: number,
+  viewportHeightPx: number,
+  sceneWorldWidthPx: number,
+  sceneWorldHeightPx: number,
+  sceneOffsetXPercent: number,
+  sceneOffsetYPercent: number,
+): { left: number; top: number; width: number; height: number; bottom: number } {
+  const width = sceneWorldWidthPx;
+  const height = sceneWorldHeightPx;
+  const left = viewportWidthPx * 0.5 - width * 0.5 + width * (sceneOffsetXPercent / 100);
+  const top = viewportHeightPx * 0.5 - height * 0.5 + height * (sceneOffsetYPercent / 100);
+  return { left, top, width, height, bottom: top + height };
+}
+
+function ndcToSceneLayerPixels(
+  ndcX: number,
+  ndcY: number,
+  sceneLayerRect: { left: number; top: number; width: number; height: number },
+): { x: number; y: number } {
+  return {
+    x: sceneLayerRect.left + ((ndcX + 1) / 2) * sceneLayerRect.width,
+    y: sceneLayerRect.top + ((1 - ndcY) / 2) * sceneLayerRect.height,
+  };
+}
+
 
 export default function LandingScene3D({
   characters,
@@ -1156,12 +1184,20 @@ export default function LandingScene3D({
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
   const triggerBottomMarginPx = 10;
   const stopBottomMarginPx = 50;
-  const triggerBottomMarginNdc = (triggerBottomMarginPx / Math.max(1, viewportHeightPx)) * 2;
-  const stopBottomMarginNdc = (stopBottomMarginPx / Math.max(1, viewportHeightPx)) * 2;
-  const triggerBottomNdc = -1 + triggerBottomMarginNdc;
-  const stopBottomNdc = -1 + stopBottomMarginNdc;
   const nameplateForwardOffset = 0.62;
   const nameplateBottomOffsetY = -0.025;
+  const sceneLayerRect = getSceneLayerRect(
+    viewportWidthPx,
+    viewportHeightPx,
+    tuning.sceneWorldWidthPx,
+    tuning.sceneWorldHeightPx,
+    effectiveTuning.sceneOffsetX,
+    effectiveTuning.sceneOffsetY,
+  );
+  const viewportBottomPx = viewportHeightPx;
+  const triggerBottomPx = viewportBottomPx - triggerBottomMarginPx;
+  const stopBottomPx = viewportBottomPx - stopBottomMarginPx;
+  const sceneNdcPerPixelY = 2 / Math.max(1, sceneLayerRect.height);
   const peopleSouthFacingY = getScreenSouthYaw(
     peopleTargetTuning.cameraX,
     peopleTargetTuning.cameraY,
@@ -1170,6 +1206,7 @@ export default function LandingScene3D({
   );
 
   let peopleLayoutMinBottomY = Number.POSITIVE_INFINITY;
+  let peopleLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
 
   if (activeLayoutPreset !== 'custom') {
     for (let index = 0; index < orderedCharacters.length; index += 1) {
@@ -1210,15 +1247,19 @@ export default function LandingScene3D({
         peopleTargetTuning.fov,
       ).y;
       peopleLayoutMinBottomY = Math.min(peopleLayoutMinBottomY, plateBottomNdc);
+      const plateBottomPx = ndcToSceneLayerPixels(0, plateBottomNdc, sceneLayerRect).y;
+      peopleLayoutMaxBottomPx = Math.max(peopleLayoutMaxBottomPx, plateBottomPx);
     }
   }
 
   const peopleLayoutOverflowsViewport =
     activeLayoutPreset !== 'custom' &&
     Number.isFinite(peopleLayoutMinBottomY) &&
-    peopleLayoutMinBottomY < triggerBottomNdc;
+    Number.isFinite(peopleLayoutMaxBottomPx) &&
+    peopleLayoutMaxBottomPx > triggerBottomPx;
 
   let customLayoutMinBottomY = Number.POSITIVE_INFINITY;
+  let customLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
   if (activeLayoutPreset === 'custom') {
     for (const character of orderedCharacters) {
       const [baseX, baseY, baseZ] = character.config.position;
@@ -1235,22 +1276,24 @@ export default function LandingScene3D({
         peopleTargetTuning.fov,
       ).y;
       customLayoutMinBottomY = Math.min(customLayoutMinBottomY, plateBottomNdc);
+      const plateBottomPx = ndcToSceneLayerPixels(0, plateBottomNdc, sceneLayerRect).y;
+      customLayoutMaxBottomPx = Math.max(customLayoutMaxBottomPx, plateBottomPx);
     }
   }
 
-  const customBottomTriggerOverflowNdc =
-    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinBottomY)
-      ? Math.max(0, triggerBottomNdc - customLayoutMinBottomY)
+  const customBottomTriggerOverflowPx =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxBottomPx)
+      ? Math.max(0, customLayoutMaxBottomPx - triggerBottomPx)
       : 0;
-  const customBottomStopOverflowNdc =
-    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinBottomY)
-      ? Math.max(0, stopBottomNdc - customLayoutMinBottomY)
+  const customBottomStopOverflowPx =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxBottomPx)
+      ? Math.max(0, customLayoutMaxBottomPx - stopBottomPx)
       : 0;
-  const customScrollRangeNdc = customBottomStopOverflowNdc;
+  const customScrollRangeNdc = customBottomStopOverflowPx * sceneNdcPerPixelY;
   const customPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
-    customBottomTriggerOverflowNdc > 0.0001;
+    customBottomTriggerOverflowPx > 0.5;
 
   const peopleScrollEnabled =
     isPeopleMode &&
@@ -1403,9 +1446,8 @@ export default function LandingScene3D({
         effectiveTuning.cameraZ,
         effectiveTuning.fov,
       );
-      const screenX = ((plateNdc.x + 1) / 2) * viewportWidthPx;
-      const screenY = ((1 - plateNdc.y) / 2) * viewportHeightPx;
-      const screenBottomY = ((1 - plateBottomNdc.y) / 2) * viewportHeightPx;
+      const plateScreen = ndcToSceneLayerPixels(plateNdc.x, plateNdc.y, sceneLayerRect);
+      const plateBottomScreen = ndcToSceneLayerPixels(plateNdc.x, plateBottomNdc.y, sceneLayerRect);
 
       return {
         id: character.id,
@@ -1415,18 +1457,20 @@ export default function LandingScene3D({
         worldZ: plateWorldZ,
         ndcX: plateNdc.x,
         ndcY: plateNdc.y,
-        screenX,
-        screenY,
+        screenX: plateScreen.x,
+        screenY: plateScreen.y,
         bottomNdcY: plateBottomNdc.y,
-        screenBottomY,
+        screenBottomY: plateBottomScreen.y,
       };
     });
 
     onDebugInfoChange({
       viewportWidthPx,
       viewportHeightPx,
-      triggerBottomPx: viewportHeightPx - triggerBottomMarginPx,
-      stopBottomPx: viewportHeightPx - stopBottomMarginPx,
+      sceneLayerTopPx: sceneLayerRect.top,
+      sceneLayerBottomPx: sceneLayerRect.bottom,
+      triggerBottomPx,
+      stopBottomPx,
       nameplates,
     });
   }, [
@@ -1446,8 +1490,9 @@ export default function LandingScene3D({
     effectiveTuning,
     viewportWidthPx,
     viewportHeightPx,
-    triggerBottomMarginPx,
-    stopBottomMarginPx,
+    sceneLayerRect,
+    triggerBottomPx,
+    stopBottomPx,
   ]);
 
   const [, setRelayoutProgress] = useState(1);
