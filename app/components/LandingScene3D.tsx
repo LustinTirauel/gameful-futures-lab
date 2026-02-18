@@ -1012,6 +1012,25 @@ function projectNdcToGround(
   };
 }
 
+function projectGroundToNdc(
+  x: number,
+  y: number,
+  z: number,
+  cameraX: number,
+  cameraY: number,
+  cameraZ: number,
+  fov: number,
+): { x: number; y: number } {
+  const camera = new PerspectiveCamera(fov, 1, 0.1, 1000);
+  camera.position.set(cameraX, cameraY, cameraZ);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+
+  const ndcPoint = new Vector3(x, y, z).project(camera);
+  return { x: ndcPoint.x, y: ndcPoint.y };
+}
+
 function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fov: number): number {
   const center = projectNdcToGround(0, 0.02, cameraX, cameraY, cameraZ, fov);
   const lower = projectNdcToGround(0, -0.55, cameraX, cameraY, cameraZ, fov);
@@ -1130,10 +1149,39 @@ export default function LandingScene3D({
     Number.isFinite(peopleLayoutMinY) &&
     (peopleLayoutMinY < peopleVisibleBottomNdc || peopleLayoutMaxY > peopleVisibleTopNdc);
 
+  let customLayoutMinY = Number.POSITIVE_INFINITY;
+  if (activeLayoutPreset === 'custom') {
+    for (const character of orderedCharacters) {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const override = tuning.peopleCharacterOverrides[character.id] ?? { x: baseX, y: baseY, z: baseZ };
+      const customNdc = projectGroundToNdc(
+        override.x,
+        override.y,
+        override.z,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      customLayoutMinY = Math.min(customLayoutMinY, customNdc.y);
+    }
+  }
+
+  const customScrollRangeNdc =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMinY)
+      ? Math.max(0, peopleVisibleBottomNdc - customLayoutMinY)
+      : 0;
+  const customPeopleScrollEnabled =
+    isPeopleMode &&
+    activeLayoutPreset === 'custom' &&
+    editMode &&
+    customScrollRangeNdc > 0.0001;
+
   const peopleScrollEnabled =
     isPeopleMode &&
-    activeLayoutPreset !== 'custom' &&
-    peopleLayoutOverflowsViewport;
+    (activeLayoutPreset !== 'custom'
+      ? peopleLayoutOverflowsViewport
+      : customPeopleScrollEnabled);
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1329,8 +1377,29 @@ export default function LandingScene3D({
           const peopleOverride = rawPeopleOverride;
           const isCustomLayout = activeLayoutPreset === 'custom';
           const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
+          const customScrollOffsetNdc = isCustomLayout ? peopleScrollProgress * customScrollRangeNdc : 0;
+          const customLineupTarget = (() => {
+            const customNdc = projectGroundToNdc(
+              peopleOverride.x,
+              peopleOverride.y,
+              peopleOverride.z,
+              peopleTargetTuning.cameraX,
+              peopleTargetTuning.cameraY,
+              peopleTargetTuning.cameraZ,
+              peopleTargetTuning.fov,
+            );
+            return projectNdcToGround(
+              customNdc.x,
+              customNdc.y + customScrollOffsetNdc,
+              peopleTargetTuning.cameraX,
+              peopleTargetTuning.cameraY,
+              peopleTargetTuning.cameraZ,
+              peopleTargetTuning.fov,
+              peopleOverride.y,
+            );
+          })();
           const lineupTarget = useCustomLineupTarget
-            ? { x: peopleOverride.x, z: peopleOverride.z }
+            ? customLineupTarget
             : projectedLineupTarget;
           const useCustomOverride = isCustomLayout && isPeopleMode && peopleTransitionProgress >= 0.999;
           const activeOverride = useCustomOverride ? peopleOverride : homeOverride;
