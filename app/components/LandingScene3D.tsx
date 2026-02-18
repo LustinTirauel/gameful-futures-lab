@@ -335,6 +335,7 @@ function DraggableCharacter({
   const [isRunningInPeople, setIsRunningInPeople] = useState(false);
   const [layoutTransitionProgress, setLayoutTransitionProgress] = useState(1);
   const [isLayoutTransitioning, setIsLayoutTransitioning] = useState(false);
+  const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
 
   useEffect(() => {
     targetPosition.current = { x: override.x, z: override.z };
@@ -443,10 +444,12 @@ function DraggableCharacter({
         southFacingY - currentRot.y,
         -currentRot.z,
       );
+
+      const inverseScale = visibleScale !== 0 ? 1 / visibleScale : 1;
+      nameplateRef.current.scale.set(inverseScale, inverseScale, inverseScale);
     }
   });
 
-  const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
   const isSceneTransitionActive = peopleTransitionProgress > 0.001 && peopleTransitionProgress < 0.999;
   const shouldUseStandingPose = isPeopleMode || isSceneTransitionActive;
   const effectiveLocomotion = isSceneTransitionActive
