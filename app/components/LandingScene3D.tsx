@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import type { Mesh, PointLight } from 'three';
-import { Color, Euler, PerspectiveCamera, Plane, Quaternion, Vector3 } from 'three';
+import { Color, PerspectiveCamera, Plane, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
@@ -294,7 +294,7 @@ function DraggableCharacter({
   peopleFinalY,
   peopleFinalScale,
   peopleRunAnimationSpeed,
-  nameplateOpacity,
+  onWorldPositionChange,
   onArrivalChange,
   onActivate,
 }: {
@@ -319,12 +319,11 @@ function DraggableCharacter({
   peopleFinalY: number;
   peopleFinalScale: number;
   peopleRunAnimationSpeed: number;
-  nameplateOpacity: number;
+  onWorldPositionChange?: (characterId: string, position: { x: number; y: number; z: number }) => void;
   onArrivalChange?: (characterId: string, arrived: boolean) => void;
   onActivate?: (characterId: string) => void;
 }) {
   const groupRef = useRef<Group>(null);
-  const nameplateRef = useRef<Group>(null);
   const dragPlane = useMemo(() => new Plane(new Vector3(0, 1, 0), -override.y), [override.y]);
   const dragPoint = useMemo(() => new Vector3(), []);
   const targetPosition = useRef({ x: override.x, z: override.z });
@@ -336,10 +335,7 @@ function DraggableCharacter({
   const [layoutTransitionProgress, setLayoutTransitionProgress] = useState(1);
   const [isLayoutTransitioning, setIsLayoutTransitioning] = useState(false);
   const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
-  const inverseParentQuat = useMemo(() => new Quaternion(), []);
-  const worldYawQuat = useMemo(() => new Quaternion(), []);
-  const desiredLocalQuat = useMemo(() => new Quaternion(), []);
-  const worldYawEuler = useMemo(() => new Euler(), []);
+  const lastReportedWorldPosition = useRef<{ x: number; y: number; z: number } | null>(null);
 
   useEffect(() => {
     targetPosition.current = { x: override.x, z: override.z };
@@ -441,15 +437,23 @@ function DraggableCharacter({
       groupRef.current.rotation.z += (override.rotZ - groupRef.current.rotation.z) * 0.12;
     }
 
-    if (isPeopleMode && nameplateRef.current) {
-      inverseParentQuat.copy(groupRef.current.quaternion).invert();
-      worldYawEuler.set(0, southFacingY, 0);
-      worldYawQuat.setFromEuler(worldYawEuler);
-      desiredLocalQuat.copy(inverseParentQuat).multiply(worldYawQuat);
-      nameplateRef.current.quaternion.copy(desiredLocalQuat);
+    if (isPeopleMode && onWorldPositionChange) {
+      const currentPosition = {
+        x: groupRef.current.position.x,
+        y: groupRef.current.position.y,
+        z: groupRef.current.position.z,
+      };
+      const previousPosition = lastReportedWorldPosition.current;
+      const changedEnough =
+        !previousPosition ||
+        Math.abs(previousPosition.x - currentPosition.x) > 0.01 ||
+        Math.abs(previousPosition.y - currentPosition.y) > 0.01 ||
+        Math.abs(previousPosition.z - currentPosition.z) > 0.01;
 
-      const inverseScale = visibleScale !== 0 ? 1 / visibleScale : 1;
-      nameplateRef.current.scale.set(inverseScale, inverseScale, inverseScale);
+      if (changedEnough) {
+        lastReportedWorldPosition.current = currentPosition;
+        onWorldPositionChange(id, currentPosition);
+      }
     }
   });
 
@@ -535,16 +539,6 @@ function DraggableCharacter({
           }
         }}
       />
-      {isPeopleMode && (
-        <group ref={nameplateRef} position={[0, -0.42, 0.56]}>
-          <NamePlate3D
-            name={name}
-            position={[0, 0, 0]}
-            rotationY={0}
-            opacity={nameplateOpacity}
-          />
-        </group>
-      )}
       {selected && editMode && (
         <mesh position={[0, 1.05, 0]}>
           <sphereGeometry args={[0.07, 12, 12]} />
@@ -1088,6 +1082,9 @@ export default function LandingScene3D({
   const southFacingY = getScreenSouthYaw(effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ, effectiveTuning.fov);
   const decorAlpha = 1 - peopleTransitionProgress;
   const [arrivedIds, setArrivedIds] = useState<Record<string, boolean>>({});
+  const [characterWorldPositions, setCharacterWorldPositions] = useState<
+    Record<string, { x: number; y: number; z: number }>
+  >({});
 
 
   useEffect(() => {
@@ -1264,37 +1261,71 @@ export default function LandingScene3D({
               : projectedLineupTarget
             : projectedLineupTarget;
           const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
+          const nameplateBasePosition = characterWorldPositions[character.id] ?? {
+            x: lineupTarget.x,
+            y: peopleOverride.y,
+            z: lineupTarget.z,
+          };
+          const nameplateForwardOffset = 0.95;
+          const nameplatePosition: [number, number, number] = [
+            nameplateBasePosition.x + Math.sin(southFacingY) * nameplateForwardOffset,
+            -0.42,
+            nameplateBasePosition.z + Math.cos(southFacingY) * nameplateForwardOffset,
+          ];
+          const nameplateOpacity = editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0;
 
           return (
-            <DraggableCharacter
-              key={character.id}
-              id={character.id}
-              name={character.name}
-              config={character.config}
-              movementBehavior={movementBehavior}
-              editMode={editMode}
-              selected={selectedModelId === character.id}
-              onSelect={(id) => onSelectModel?.(id)}
-              onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
-              override={activeOverride}
-              globalCharacterScale={effectiveTuning.characterScale}
-              lineupTarget={lineupTarget}
-              isPeopleMode={isPeopleMode}
-              southFacingY={southFacingY}
-              peopleTransitionProgress={peopleTransitionProgress}
-              totalTransitionSeconds={totalTransitionSeconds}
-              peopleFinalRotX={peopleOverride.rotX}
-              peopleFinalRotY={peopleOverride.rotY}
-              peopleFinalRotZ={peopleOverride.rotZ}
-              peopleFinalY={peopleOverride.y}
-              peopleFinalScale={peopleOverride.scale}
-              peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
-              nameplateOpacity={editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0}
-              onArrivalChange={(characterId, arrived) =>
-                setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
-              }
-              onActivate={onCharacterActivate}
-            />
+            <group key={character.id}>
+              {isPeopleMode && (
+                <NamePlate3D
+                  name={character.name}
+                  position={nameplatePosition}
+                  rotationY={southFacingY}
+                  opacity={nameplateOpacity}
+                />
+              )}
+              <DraggableCharacter
+                id={character.id}
+                name={character.name}
+                config={character.config}
+                movementBehavior={movementBehavior}
+                editMode={editMode}
+                selected={selectedModelId === character.id}
+                onSelect={(id) => onSelectModel?.(id)}
+                onOverrideChange={(id, next) => onCharacterOverrideChange?.(id, next)}
+                override={activeOverride}
+                globalCharacterScale={effectiveTuning.characterScale}
+                lineupTarget={lineupTarget}
+                isPeopleMode={isPeopleMode}
+                southFacingY={southFacingY}
+                peopleTransitionProgress={peopleTransitionProgress}
+                totalTransitionSeconds={totalTransitionSeconds}
+                peopleFinalRotX={peopleOverride.rotX}
+                peopleFinalRotY={peopleOverride.rotY}
+                peopleFinalRotZ={peopleOverride.rotZ}
+                peopleFinalY={peopleOverride.y}
+                peopleFinalScale={peopleOverride.scale}
+                peopleRunAnimationSpeed={tuning.peopleRunAnimationSpeed}
+                onWorldPositionChange={(characterId, nextPosition) =>
+                  setCharacterWorldPositions((current) => {
+                    const previous = current[characterId];
+                    if (
+                      previous &&
+                      Math.abs(previous.x - nextPosition.x) < 0.001 &&
+                      Math.abs(previous.y - nextPosition.y) < 0.001 &&
+                      Math.abs(previous.z - nextPosition.z) < 0.001
+                    ) {
+                      return current;
+                    }
+                    return { ...current, [characterId]: nextPosition };
+                  })
+                }
+                onArrivalChange={(characterId, arrived) =>
+                  setArrivedIds((current) => ({ ...current, [characterId]: arrived }))
+                }
+                onActivate={onCharacterActivate}
+              />
+            </group>
           );
         })}
       </Canvas>
