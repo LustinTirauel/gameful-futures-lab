@@ -6,6 +6,7 @@ import LandingScene3D, {
   defaultSceneTuning,
   type ModelOverride,
   type PeopleViewTuning,
+  type SceneDebugInfo,
   type SceneTuning,
 } from './components/LandingScene3D';
 import PeopleModal from './components/PeopleModal';
@@ -98,6 +99,7 @@ export default function Home() {
   const [peopleScrollProgress, setPeopleScrollProgress] = useState(0);
   const [peopleScrollAnimated, setPeopleScrollAnimated] = useState(true);
   const [peopleScrollEnabled, setPeopleScrollEnabled] = useState(false);
+  const [sceneDebugInfo, setSceneDebugInfo] = useState<SceneDebugInfo | null>(null);
   const touchStartYRef = useRef(0);
 
   useEffect(() => {
@@ -383,8 +385,48 @@ export default function Home() {
             peopleScrollProgress={peopleScrollProgress}
             peopleScrollAnimated={peopleScrollAnimated}
             onPeopleScrollEnabledChange={setPeopleScrollEnabled}
+            onDebugInfoChange={setSceneDebugInfo}
           />
         </div>
+      )}
+
+      {mode === 'people' && sceneDebugInfo && (
+        <aside
+          style={{
+            position: 'fixed',
+            top: 12,
+            left: 12,
+            zIndex: 60,
+            background: 'rgba(8, 10, 18, 0.8)',
+            color: '#dff0ff',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            fontSize: 11,
+            lineHeight: 1.35,
+            padding: '10px 12px',
+            borderRadius: 8,
+            maxHeight: '70vh',
+            overflow: 'auto',
+            pointerEvents: 'none',
+            minWidth: 340,
+          }}
+        >
+          <div>viewport: {sceneDebugInfo.viewportWidthPx} × {sceneDebugInfo.viewportHeightPx}px</div>
+          <div>scene layer y: {sceneDebugInfo.sceneLayerTopPx.toFixed(1)} → {sceneDebugInfo.sceneLayerBottomPx.toFixed(1)}px</div>
+          <div>trigger bottom y: {sceneDebugInfo.triggerBottomPx.toFixed(1)}px</div>
+          <div>stop bottom y: {sceneDebugInfo.stopBottomPx.toFixed(1)}px</div>
+          <div>scroll enabled: {String(peopleScrollEnabled)}</div>
+          <div>scroll progress: {peopleScrollProgress.toFixed(3)}</div>
+          <hr style={{ borderColor: 'rgba(223,240,255,0.3)', margin: '8px 0' }} />
+          {sceneDebugInfo.nameplates.map((plate) => (
+            <div key={plate.id} style={{ marginBottom: 6 }}>
+              <strong>{plate.name}</strong> ({plate.id})<br />
+              ndc=({plate.ndcX.toFixed(3)}, {plate.ndcY.toFixed(3)})<br />
+              screen=({plate.screenX.toFixed(1)}, {plate.screenY.toFixed(1)})<br />
+              bottomNdcY={plate.bottomNdcY.toFixed(3)} bottomPxY={plate.screenBottomY.toFixed(1)}<br />
+              world=({plate.worldX.toFixed(2)}, {plate.worldY.toFixed(2)}, {plate.worldZ.toFixed(2)})
+            </div>
+          ))}
+        </aside>
       )}
 
       <TopNav mode={mode} onModeChange={handleModeChange} />

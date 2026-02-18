@@ -241,6 +241,30 @@ function lerpNumber(from: number, to: number, progress: number): number {
   return from + (to - from) * progress;
 }
 
+export type SceneDebugNameplateInfo = {
+  id: string;
+  name: string;
+  worldX: number;
+  worldY: number;
+  worldZ: number;
+  ndcX: number;
+  ndcY: number;
+  screenX: number;
+  screenY: number;
+  bottomNdcY: number;
+  screenBottomY: number;
+};
+
+export type SceneDebugInfo = {
+  viewportWidthPx: number;
+  viewportHeightPx: number;
+  sceneLayerTopPx: number;
+  sceneLayerBottomPx: number;
+  triggerBottomPx: number;
+  stopBottomPx: number;
+  nameplates: SceneDebugNameplateInfo[];
+};
+
 type LandingScene3DProps = {
   characters: Array<{ id: string; name: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
@@ -257,6 +281,7 @@ type LandingScene3DProps = {
   peopleScrollProgress?: number;
   peopleScrollAnimated?: boolean;
   onPeopleScrollEnabledChange?: (enabled: boolean) => void;
+  onDebugInfoChange?: (info: SceneDebugInfo) => void;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -1012,10 +1037,55 @@ function projectNdcToGround(
   };
 }
 
+function projectGroundToNdc(
+  x: number,
+  y: number,
+  z: number,
+  cameraX: number,
+  cameraY: number,
+  cameraZ: number,
+  fov: number,
+): { x: number; y: number } {
+  const camera = new PerspectiveCamera(fov, 1, 0.1, 1000);
+  camera.position.set(cameraX, cameraY, cameraZ);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+
+  const ndcPoint = new Vector3(x, y, z).project(camera);
+  return { x: ndcPoint.x, y: ndcPoint.y };
+}
+
 function getScreenSouthYaw(cameraX: number, cameraY: number, cameraZ: number, fov: number): number {
   const center = projectNdcToGround(0, 0.02, cameraX, cameraY, cameraZ, fov);
   const lower = projectNdcToGround(0, -0.55, cameraX, cameraY, cameraZ, fov);
   return Math.atan2(lower.x - center.x, lower.z - center.z);
+}
+
+function getSceneLayerRect(
+  viewportWidthPx: number,
+  viewportHeightPx: number,
+  sceneWorldWidthPx: number,
+  sceneWorldHeightPx: number,
+  sceneOffsetXPercent: number,
+  sceneOffsetYPercent: number,
+): { left: number; top: number; width: number; height: number; bottom: number } {
+  const width = sceneWorldWidthPx;
+  const height = sceneWorldHeightPx;
+  const left = viewportWidthPx * 0.5 - width * 0.5 + width * (sceneOffsetXPercent / 100);
+  const top = viewportHeightPx * 0.5 - height * 0.5 + height * (sceneOffsetYPercent / 100);
+  return { left, top, width, height, bottom: top + height };
+}
+
+function ndcToSceneLayerPixels(
+  ndcX: number,
+  ndcY: number,
+  sceneLayerRect: { left: number; top: number; width: number; height: number },
+): { x: number; y: number } {
+  return {
+    x: sceneLayerRect.left + ((ndcX + 1) / 2) * sceneLayerRect.width,
+    y: sceneLayerRect.top + ((1 - ndcY) / 2) * sceneLayerRect.height,
+  };
 }
 
 
@@ -1035,6 +1105,7 @@ export default function LandingScene3D({
   peopleScrollProgress = 0,
   peopleScrollAnimated = true,
   onPeopleScrollEnabledChange,
+  onDebugInfoChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1061,9 +1132,15 @@ export default function LandingScene3D({
 
   const isPeopleMode = mode === 'people';
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [viewportWidthPx, setViewportWidthPx] = useState(1400);
+  const [viewportHeightPx, setViewportHeightPx] = useState(900);
 
   useEffect(() => {
-    const update = () => setIsNarrowViewport(window.innerWidth < 920);
+    const update = () => {
+      setIsNarrowViewport(window.innerWidth < 920);
+      setViewportWidthPx(window.innerWidth);
+      setViewportHeightPx(window.innerHeight);
+    };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -1104,36 +1181,144 @@ export default function LandingScene3D({
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
   const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
   const maxPeopleRowOffset = Math.max(0, totalRows - 1);
-  const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
-  const peopleVisibleTopNdc = 0.24;
-  const peopleVisibleBottomNdc = -0.55;
-  let peopleLayoutMinY = Number.POSITIVE_INFINITY;
-  let peopleLayoutMaxY = Number.NEGATIVE_INFINITY;
+  const triggerBottomMarginPx = 10;
+  const stopAtScreenYpx = 600;
+  const nameplateForwardOffset = 0.62;
+  const nameplateBottomOffsetY = -0.025;
+  const sceneLayerRect = getSceneLayerRect(
+    viewportWidthPx,
+    viewportHeightPx,
+    tuning.sceneWorldWidthPx,
+    tuning.sceneWorldHeightPx,
+    effectiveTuning.sceneOffsetX,
+    effectiveTuning.sceneOffsetY,
+  );
+  const viewportBottomPx = viewportHeightPx;
+  const triggerBottomPx = viewportBottomPx - triggerBottomMarginPx;
+  const stopBottomPx = stopAtScreenYpx;
+  const sceneNdcPerPixelY = 2 / Math.max(1, sceneLayerRect.height);
+  const peopleSouthFacingY = getScreenSouthYaw(
+    peopleTargetTuning.cameraX,
+    peopleTargetTuning.cameraY,
+    peopleTargetTuning.cameraZ,
+    peopleTargetTuning.fov,
+  );
 
-  if (activeLayoutPreset !== 'custom') {
+  const getRegularLayoutBottommostScreenY = (rowOffset: number): number => {
+    let maxBottomPx = Number.NEGATIVE_INFINITY;
+
     for (let index = 0; index < orderedCharacters.length; index += 1) {
-      const { y } = getPeopleLayoutNdc(
+      const character = orderedCharacters[index];
+      const [baseX, baseY, baseZ] = character.config.position;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+      };
+      const layoutNdc = getPeopleLayoutNdc(
         index,
         orderedCharacters.length,
         activeLayoutPreset,
         activeLayoutColumns,
         tuning.peopleLineupSpacing,
-        0,
+        rowOffset,
       );
-      peopleLayoutMinY = Math.min(peopleLayoutMinY, y);
-      peopleLayoutMaxY = Math.max(peopleLayoutMaxY, y);
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+        homeOverride.y,
+      );
+      const plateX = projectedLineupTarget.x + Math.sin(peopleSouthFacingY) * nameplateForwardOffset;
+      const plateZ = projectedLineupTarget.z + Math.cos(peopleSouthFacingY) * nameplateForwardOffset;
+      const plateBottomNdc = projectGroundToNdc(
+        plateX,
+        -0.42 + nameplateBottomOffsetY,
+        plateZ,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      ).y;
+      const plateBottomPx = ndcToSceneLayerPixels(0, plateBottomNdc, sceneLayerRect).y;
+      maxBottomPx = Math.max(maxBottomPx, plateBottomPx);
     }
+
+    return maxBottomPx;
+  };
+
+  const peopleLayoutBottommostPxAtRest =
+    activeLayoutPreset !== 'custom' ? getRegularLayoutBottommostScreenY(0) : Number.NEGATIVE_INFINITY;
+
+  let maxPeopleRowOffsetForStop = maxPeopleRowOffset;
+  if (activeLayoutPreset !== 'custom' && Number.isFinite(peopleLayoutBottommostPxAtRest) && peopleLayoutBottommostPxAtRest > stopBottomPx) {
+    let low = 0;
+    let high = maxPeopleRowOffset;
+    for (let iteration = 0; iteration < 16; iteration += 1) {
+      const mid = (low + high) * 0.5;
+      const midBottomPx = getRegularLayoutBottommostScreenY(mid);
+      if (midBottomPx > stopBottomPx) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    maxPeopleRowOffsetForStop = high;
   }
+
+  const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffsetForStop;
 
   const peopleLayoutOverflowsViewport =
     activeLayoutPreset !== 'custom' &&
-    Number.isFinite(peopleLayoutMinY) &&
-    (peopleLayoutMinY < peopleVisibleBottomNdc || peopleLayoutMaxY > peopleVisibleTopNdc);
+    Number.isFinite(peopleLayoutBottommostPxAtRest) &&
+    peopleLayoutBottommostPxAtRest > triggerBottomPx;
+
+  let customLayoutMinBottomY = Number.POSITIVE_INFINITY;
+  let customLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
+  if (activeLayoutPreset === 'custom') {
+    for (const character of orderedCharacters) {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const override = tuning.peopleCharacterOverrides[character.id] ?? { x: baseX, y: baseY, z: baseZ, scale: 1 };
+      const plateX = override.x + Math.sin(peopleSouthFacingY) * nameplateForwardOffset;
+      const plateZ = override.z + Math.cos(peopleSouthFacingY) * nameplateForwardOffset;
+      const plateBottomNdc = projectGroundToNdc(
+        plateX,
+        -0.42 + nameplateBottomOffsetY,
+        plateZ,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      ).y;
+      customLayoutMinBottomY = Math.min(customLayoutMinBottomY, plateBottomNdc);
+      const plateBottomPx = ndcToSceneLayerPixels(0, plateBottomNdc, sceneLayerRect).y;
+      customLayoutMaxBottomPx = Math.max(customLayoutMaxBottomPx, plateBottomPx);
+    }
+  }
+
+  const customBottomTriggerOverflowPx =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxBottomPx)
+      ? Math.max(0, customLayoutMaxBottomPx - triggerBottomPx)
+      : 0;
+  const customBottomStopOverflowPx =
+    activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxBottomPx)
+      ? Math.max(0, customLayoutMaxBottomPx - stopBottomPx)
+      : 0;
+  const customScrollRangeNdc = customBottomStopOverflowPx * sceneNdcPerPixelY;
+  const customPeopleScrollEnabled =
+    isPeopleMode &&
+    activeLayoutPreset === 'custom' &&
+    customBottomTriggerOverflowPx > 0.5;
 
   const peopleScrollEnabled =
     isPeopleMode &&
-    activeLayoutPreset !== 'custom' &&
-    peopleLayoutOverflowsViewport;
+    (activeLayoutPreset !== 'custom'
+      ? peopleLayoutOverflowsViewport
+      : customPeopleScrollEnabled);
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -1190,9 +1375,144 @@ export default function LandingScene3D({
     onPeopleScrollEnabledChange?.(peopleScrollEnabled);
   }, [onPeopleScrollEnabledChange, peopleScrollEnabled]);
 
+  useEffect(() => {
+    if (!onDebugInfoChange) return;
 
+    const nameplates = orderedCharacters.map((character, index) => {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+        rotX: baseRotX,
+        rotY: baseRotY,
+        rotZ: baseRotZ,
+      };
+      const layoutNdc = getPeopleLayoutNdc(
+        index,
+        orderedCharacters.length,
+        activeLayoutPreset,
+        activeLayoutColumns,
+        tuning.peopleLineupSpacing,
+        peopleRowOffset,
+      );
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const peopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+        x: projectedLineupTarget.x,
+        y: homeOverride.y,
+        z: projectedLineupTarget.z,
+        scale: homeOverride.scale,
+        rotX: 0,
+        rotY: southFacingY,
+        rotZ: 0,
+      };
 
+      const isCustomLayout = activeLayoutPreset === 'custom';
+      const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
+      const customNdc = projectGroundToNdc(
+        peopleOverride.x,
+        peopleOverride.y,
+        peopleOverride.z,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const customScrollOffsetNdc = isCustomLayout ? peopleScrollProgress * customScrollRangeNdc : 0;
+      const customLineupTarget = projectNdcToGround(
+        customNdc.x,
+        customNdc.y + customScrollOffsetNdc,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+        peopleOverride.y,
+      );
+      const lineupTarget = useCustomLineupTarget ? customLineupTarget : projectedLineupTarget;
+      const nameplateBasePosition = characterWorldPositions[character.id] ?? {
+        x: lineupTarget.x,
+        y: peopleOverride.y,
+        z: lineupTarget.z,
+      };
+      const plateWorldX = nameplateBasePosition.x + Math.sin(southFacingY) * 0.62;
+      const plateWorldY = -0.42;
+      const plateBottomWorldY = -0.42 - 0.025;
+      const plateWorldZ = nameplateBasePosition.z + Math.cos(southFacingY) * 0.62;
+      const plateNdc = projectGroundToNdc(
+        plateWorldX,
+        plateWorldY,
+        plateWorldZ,
+        effectiveTuning.cameraX,
+        effectiveTuning.cameraY,
+        effectiveTuning.cameraZ,
+        effectiveTuning.fov,
+      );
+      const plateBottomNdc = projectGroundToNdc(
+        plateWorldX,
+        plateBottomWorldY,
+        plateWorldZ,
+        effectiveTuning.cameraX,
+        effectiveTuning.cameraY,
+        effectiveTuning.cameraZ,
+        effectiveTuning.fov,
+      );
+      const plateScreen = ndcToSceneLayerPixels(plateNdc.x, plateNdc.y, sceneLayerRect);
+      const plateBottomScreen = ndcToSceneLayerPixels(plateNdc.x, plateBottomNdc.y, sceneLayerRect);
 
+      return {
+        id: character.id,
+        name: character.name,
+        worldX: plateWorldX,
+        worldY: plateWorldY,
+        worldZ: plateWorldZ,
+        ndcX: plateNdc.x,
+        ndcY: plateNdc.y,
+        screenX: plateScreen.x,
+        screenY: plateScreen.y,
+        bottomNdcY: plateBottomNdc.y,
+        screenBottomY: plateBottomScreen.y,
+      };
+    });
+
+    onDebugInfoChange({
+      viewportWidthPx,
+      viewportHeightPx,
+      sceneLayerTopPx: sceneLayerRect.top,
+      sceneLayerBottomPx: sceneLayerRect.bottom,
+      triggerBottomPx,
+      stopBottomPx,
+      nameplates,
+    });
+  }, [
+    onDebugInfoChange,
+    orderedCharacters,
+    tuning,
+    activeLayoutPreset,
+    activeLayoutColumns,
+    peopleRowOffset,
+    peopleTargetTuning,
+    southFacingY,
+    isPeopleMode,
+    peopleTransitionProgress,
+    peopleScrollProgress,
+    customScrollRangeNdc,
+    characterWorldPositions,
+    effectiveTuning,
+    viewportWidthPx,
+    viewportHeightPx,
+    sceneLayerRect,
+    triggerBottomPx,
+    stopBottomPx,
+  ]);
 
   const [, setRelayoutProgress] = useState(1);
   const previousLayoutKeyRef = useRef<string | null>(null);
@@ -1327,13 +1647,34 @@ export default function LandingScene3D({
             rotZ: 0,
           };
           const peopleOverride = rawPeopleOverride;
-          const useCustomLayout = isPeopleMode && activeLayoutPreset === 'custom';
-          const lineupTarget = isPeopleMode
-            ? useCustomLayout
-              ? { x: peopleOverride.x, z: peopleOverride.z }
-              : projectedLineupTarget
+          const isCustomLayout = activeLayoutPreset === 'custom';
+          const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
+          const customScrollOffsetNdc = isCustomLayout ? peopleScrollProgress * customScrollRangeNdc : 0;
+          const customLineupTarget = (() => {
+            const customNdc = projectGroundToNdc(
+              peopleOverride.x,
+              peopleOverride.y,
+              peopleOverride.z,
+              peopleTargetTuning.cameraX,
+              peopleTargetTuning.cameraY,
+              peopleTargetTuning.cameraZ,
+              peopleTargetTuning.fov,
+            );
+            return projectNdcToGround(
+              customNdc.x,
+              customNdc.y + customScrollOffsetNdc,
+              peopleTargetTuning.cameraX,
+              peopleTargetTuning.cameraY,
+              peopleTargetTuning.cameraZ,
+              peopleTargetTuning.fov,
+              peopleOverride.y,
+            );
+          })();
+          const lineupTarget = useCustomLineupTarget
+            ? customLineupTarget
             : projectedLineupTarget;
-          const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
+          const useCustomOverride = isCustomLayout && isPeopleMode && peopleTransitionProgress >= 0.999;
+          const activeOverride = useCustomOverride ? peopleOverride : homeOverride;
           const nameplateBasePosition = characterWorldPositions[character.id] ?? {
             x: lineupTarget.x,
             y: peopleOverride.y,
