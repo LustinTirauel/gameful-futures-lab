@@ -1266,7 +1266,7 @@ export default function LandingScene3D({
             y: peopleOverride.y,
             z: lineupTarget.z,
           };
-          const nameplateForwardOffset = 0.95;
+          const nameplateForwardOffset = 0.62;
           const nameplatePosition: [number, number, number] = [
             nameplateBasePosition.x + Math.sin(southFacingY) * nameplateForwardOffset,
             -0.42,
