@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import type { Mesh, PointLight } from 'three';
-import { Color, PerspectiveCamera, Plane, Vector3 } from 'three';
+import { Color, Euler, PerspectiveCamera, Plane, Quaternion, Vector3 } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
 import PrimitiveCharacter from './PrimitiveCharacter';
 
@@ -336,6 +336,10 @@ function DraggableCharacter({
   const [layoutTransitionProgress, setLayoutTransitionProgress] = useState(1);
   const [isLayoutTransitioning, setIsLayoutTransitioning] = useState(false);
   const visibleScale = (isPeopleMode ? peopleFinalScale : override.scale) * globalCharacterScale;
+  const inverseParentQuat = useMemo(() => new Quaternion(), []);
+  const worldYawQuat = useMemo(() => new Quaternion(), []);
+  const desiredLocalQuat = useMemo(() => new Quaternion(), []);
+  const worldYawEuler = useMemo(() => new Euler(), []);
 
   useEffect(() => {
     targetPosition.current = { x: override.x, z: override.z };
@@ -438,12 +442,11 @@ function DraggableCharacter({
     }
 
     if (isPeopleMode && nameplateRef.current) {
-      const currentRot = groupRef.current.rotation;
-      nameplateRef.current.rotation.set(
-        -currentRot.x,
-        southFacingY - currentRot.y,
-        -currentRot.z,
-      );
+      inverseParentQuat.copy(groupRef.current.quaternion).invert();
+      worldYawEuler.set(0, southFacingY, 0);
+      worldYawQuat.setFromEuler(worldYawEuler);
+      desiredLocalQuat.copy(inverseParentQuat).multiply(worldYawQuat);
+      nameplateRef.current.quaternion.copy(desiredLocalQuat);
 
       const inverseScale = visibleScale !== 0 ? 1 / visibleScale : 1;
       nameplateRef.current.scale.set(inverseScale, inverseScale, inverseScale);
@@ -533,10 +536,10 @@ function DraggableCharacter({
         }}
       />
       {isPeopleMode && (
-        <group ref={nameplateRef}>
+        <group ref={nameplateRef} position={[0, -0.42, 0.56]}>
           <NamePlate3D
             name={name}
-            position={[0, -0.42, 0.56]}
+            position={[0, 0, 0]}
             rotationY={0}
             opacity={nameplateOpacity}
           />
