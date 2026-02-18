@@ -1708,7 +1708,9 @@ export default function LandingScene3D({
             -0.42,
             nameplateBasePosition.z + Math.cos(southFacingY) * nameplateForwardOffset,
           ];
-          const nameplateOpacity = editMode ? 0 : arrivedIds[character.id] ? 1 : peopleTransitionProgress >= 0.999 ? 1 : 0;
+          const nameplateFadeStart = 0.72;
+          const nameplateFadeProgress = Math.max(0, Math.min(1, (peopleTransitionProgress - nameplateFadeStart) / (1 - nameplateFadeStart)));
+          const nameplateOpacity = editMode ? 0 : nameplateFadeProgress;
 
           return (
             <group key={character.id}>
