@@ -241,6 +241,24 @@ function lerpNumber(from: number, to: number, progress: number): number {
   return from + (to - from) * progress;
 }
 
+export type SceneDebugNameplateInfo = {
+  id: string;
+  name: string;
+  worldX: number;
+  worldY: number;
+  worldZ: number;
+  ndcX: number;
+  ndcY: number;
+  screenX: number;
+  screenY: number;
+};
+
+export type SceneDebugInfo = {
+  viewportWidthPx: number;
+  viewportHeightPx: number;
+  nameplates: SceneDebugNameplateInfo[];
+};
+
 type LandingScene3DProps = {
   characters: Array<{ id: string; name: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
@@ -257,6 +275,7 @@ type LandingScene3DProps = {
   peopleScrollProgress?: number;
   peopleScrollAnimated?: boolean;
   onPeopleScrollEnabledChange?: (enabled: boolean) => void;
+  onDebugInfoChange?: (info: SceneDebugInfo) => void;
 };
 
 function CameraController({ cameraX, cameraY, cameraZ, fov }: { cameraX: number; cameraY: number; cameraZ: number; fov: number }) {
@@ -1054,6 +1073,7 @@ export default function LandingScene3D({
   peopleScrollProgress = 0,
   peopleScrollAnimated = true,
   onPeopleScrollEnabledChange,
+  onDebugInfoChange,
 }: LandingScene3DProps) {
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
 
@@ -1080,11 +1100,13 @@ export default function LandingScene3D({
 
   const isPeopleMode = mode === 'people';
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [viewportWidthPx, setViewportWidthPx] = useState(1400);
   const [viewportHeightPx, setViewportHeightPx] = useState(900);
 
   useEffect(() => {
     const update = () => {
       setIsNarrowViewport(window.innerWidth < 920);
+      setViewportWidthPx(window.innerWidth);
       setViewportHeightPx(window.innerHeight);
     };
     update();
@@ -1289,9 +1311,125 @@ export default function LandingScene3D({
     onPeopleScrollEnabledChange?.(peopleScrollEnabled);
   }, [onPeopleScrollEnabledChange, peopleScrollEnabled]);
 
+  useEffect(() => {
+    if (!onDebugInfoChange) return;
 
+    const nameplates = orderedCharacters.map((character, index) => {
+      const [baseX, baseY, baseZ] = character.config.position;
+      const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
+      const homeOverride = tuning.characterOverrides[character.id] ?? {
+        x: baseX,
+        y: baseY,
+        z: baseZ,
+        scale: 1,
+        rotX: baseRotX,
+        rotY: baseRotY,
+        rotZ: baseRotZ,
+      };
+      const layoutNdc = getPeopleLayoutNdc(
+        index,
+        orderedCharacters.length,
+        activeLayoutPreset,
+        activeLayoutColumns,
+        tuning.peopleLineupSpacing,
+        peopleRowOffset,
+      );
+      const projectedLineupTarget = projectNdcToGround(
+        layoutNdc.x,
+        layoutNdc.y,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const peopleOverride = tuning.peopleCharacterOverrides[character.id] ?? {
+        x: projectedLineupTarget.x,
+        y: homeOverride.y,
+        z: projectedLineupTarget.z,
+        scale: homeOverride.scale,
+        rotX: 0,
+        rotY: southFacingY,
+        rotZ: 0,
+      };
 
+      const isCustomLayout = activeLayoutPreset === 'custom';
+      const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
+      const customNdc = projectGroundToNdc(
+        peopleOverride.x,
+        peopleOverride.y,
+        peopleOverride.z,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+      );
+      const customScrollOffsetNdc = isCustomLayout ? peopleScrollProgress * customScrollRangeNdc : 0;
+      const customLineupTarget = projectNdcToGround(
+        customNdc.x,
+        customNdc.y + customScrollOffsetNdc,
+        peopleTargetTuning.cameraX,
+        peopleTargetTuning.cameraY,
+        peopleTargetTuning.cameraZ,
+        peopleTargetTuning.fov,
+        peopleOverride.y,
+      );
+      const lineupTarget = useCustomLineupTarget ? customLineupTarget : projectedLineupTarget;
+      const nameplateBasePosition = characterWorldPositions[character.id] ?? {
+        x: lineupTarget.x,
+        y: peopleOverride.y,
+        z: lineupTarget.z,
+      };
+      const plateWorldX = nameplateBasePosition.x + Math.sin(southFacingY) * 0.62;
+      const plateWorldY = -0.42;
+      const plateWorldZ = nameplateBasePosition.z + Math.cos(southFacingY) * 0.62;
+      const plateNdc = projectGroundToNdc(
+        plateWorldX,
+        plateWorldY,
+        plateWorldZ,
+        effectiveTuning.cameraX,
+        effectiveTuning.cameraY,
+        effectiveTuning.cameraZ,
+        effectiveTuning.fov,
+      );
+      const screenX = ((plateNdc.x + 1) / 2) * viewportWidthPx;
+      const screenY = ((1 - plateNdc.y) / 2) * viewportHeightPx;
 
+      return {
+        id: character.id,
+        name: character.name,
+        worldX: plateWorldX,
+        worldY: plateWorldY,
+        worldZ: plateWorldZ,
+        ndcX: plateNdc.x,
+        ndcY: plateNdc.y,
+        screenX,
+        screenY,
+      };
+    });
+
+    onDebugInfoChange({
+      viewportWidthPx,
+      viewportHeightPx,
+      nameplates,
+    });
+  }, [
+    onDebugInfoChange,
+    orderedCharacters,
+    tuning,
+    activeLayoutPreset,
+    activeLayoutColumns,
+    peopleRowOffset,
+    peopleTargetTuning,
+    southFacingY,
+    isPeopleMode,
+    peopleTransitionProgress,
+    peopleScrollProgress,
+    customScrollRangeNdc,
+    characterWorldPositions,
+    effectiveTuning,
+    viewportWidthPx,
+    viewportHeightPx,
+  ]);
 
   const [, setRelayoutProgress] = useState(1);
   const previousLayoutKeyRef = useRef<string | null>(null);
