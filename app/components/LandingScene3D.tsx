@@ -1327,13 +1327,13 @@ export default function LandingScene3D({
             rotZ: 0,
           };
           const peopleOverride = rawPeopleOverride;
-          const useCustomLayout = isPeopleMode && activeLayoutPreset === 'custom';
-          const lineupTarget = isPeopleMode
-            ? useCustomLayout
-              ? { x: peopleOverride.x, z: peopleOverride.z }
-              : projectedLineupTarget
+          const isCustomLayout = activeLayoutPreset === 'custom';
+          const useCustomLineupTarget = isCustomLayout && (isPeopleMode || peopleTransitionProgress > 0.001);
+          const lineupTarget = useCustomLineupTarget
+            ? { x: peopleOverride.x, z: peopleOverride.z }
             : projectedLineupTarget;
-          const activeOverride = useCustomLayout ? peopleOverride : homeOverride;
+          const useCustomOverride = isCustomLayout && isPeopleMode && peopleTransitionProgress >= 0.999;
+          const activeOverride = useCustomOverride ? peopleOverride : homeOverride;
           const nameplateBasePosition = characterWorldPositions[character.id] ?? {
             x: lineupTarget.x,
             y: peopleOverride.y,
