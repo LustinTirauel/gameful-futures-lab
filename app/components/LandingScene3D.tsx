@@ -1181,7 +1181,6 @@ export default function LandingScene3D({
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
   const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
   const maxPeopleRowOffset = Math.max(0, totalRows - 1);
-  const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffset;
   const triggerBottomMarginPx = 10;
   const stopAtScreenYpx = 600;
   const nameplateForwardOffset = 0.62;
@@ -1205,10 +1204,9 @@ export default function LandingScene3D({
     peopleTargetTuning.fov,
   );
 
-  let peopleLayoutMinBottomY = Number.POSITIVE_INFINITY;
-  let peopleLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
+  const getRegularLayoutBottommostScreenY = (rowOffset: number): number => {
+    let maxBottomPx = Number.NEGATIVE_INFINITY;
 
-  if (activeLayoutPreset !== 'custom') {
     for (let index = 0; index < orderedCharacters.length; index += 1) {
       const character = orderedCharacters[index];
       const [baseX, baseY, baseZ] = character.config.position;
@@ -1224,7 +1222,7 @@ export default function LandingScene3D({
         activeLayoutPreset,
         activeLayoutColumns,
         tuning.peopleLineupSpacing,
-        0,
+        rowOffset,
       );
       const projectedLineupTarget = projectNdcToGround(
         layoutNdc.x,
@@ -1246,17 +1244,38 @@ export default function LandingScene3D({
         peopleTargetTuning.cameraZ,
         peopleTargetTuning.fov,
       ).y;
-      peopleLayoutMinBottomY = Math.min(peopleLayoutMinBottomY, plateBottomNdc);
       const plateBottomPx = ndcToSceneLayerPixels(0, plateBottomNdc, sceneLayerRect).y;
-      peopleLayoutMaxBottomPx = Math.max(peopleLayoutMaxBottomPx, plateBottomPx);
+      maxBottomPx = Math.max(maxBottomPx, plateBottomPx);
     }
+
+    return maxBottomPx;
+  };
+
+  const peopleLayoutBottommostPxAtRest =
+    activeLayoutPreset !== 'custom' ? getRegularLayoutBottommostScreenY(0) : Number.NEGATIVE_INFINITY;
+
+  let maxPeopleRowOffsetForStop = maxPeopleRowOffset;
+  if (activeLayoutPreset !== 'custom' && Number.isFinite(peopleLayoutBottommostPxAtRest) && peopleLayoutBottommostPxAtRest > stopBottomPx) {
+    let low = 0;
+    let high = maxPeopleRowOffset;
+    for (let iteration = 0; iteration < 16; iteration += 1) {
+      const mid = (low + high) * 0.5;
+      const midBottomPx = getRegularLayoutBottommostScreenY(mid);
+      if (midBottomPx > stopBottomPx) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    maxPeopleRowOffsetForStop = high;
   }
+
+  const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffsetForStop;
 
   const peopleLayoutOverflowsViewport =
     activeLayoutPreset !== 'custom' &&
-    Number.isFinite(peopleLayoutMinBottomY) &&
-    Number.isFinite(peopleLayoutMaxBottomPx) &&
-    peopleLayoutMaxBottomPx > triggerBottomPx;
+    Number.isFinite(peopleLayoutBottommostPxAtRest) &&
+    peopleLayoutBottommostPxAtRest > triggerBottomPx;
 
   let customLayoutMinBottomY = Number.POSITIVE_INFINITY;
   let customLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
