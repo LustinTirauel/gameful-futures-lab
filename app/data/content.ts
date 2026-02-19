@@ -71,7 +71,11 @@ export type Project = {
   id: string;
   title: string;
   summary: string;
-  detailsHtml: string;
+  sections: Array<{
+    heading?: string;
+    paragraphs: string[];
+    bullets?: string[];
+  }>;
   memberIds: string[];
 };
 
@@ -217,15 +221,33 @@ export const projects: Project[] = [
     title: 'Proto Worlds',
     summary: 'Rapid-play prototypes for speculative futures.',
     memberIds: ['alex', 'bea', 'chen'],
-    detailsHtml:
-      '<p>Proto Worlds combines workshops, playable scenes and storytelling prompts to evaluate alternative futures.</p><p><strong>Outputs:</strong> toolkits, showcases, and open resources.</p>',
+    sections: [
+      {
+        paragraphs: [
+          'Proto Worlds combines workshops, playable scenes and storytelling prompts to evaluate alternative futures.',
+        ],
+      },
+      {
+        heading: 'Outputs',
+        paragraphs: ['Toolkits, showcases, and open resources.'],
+      },
+    ],
   },
   {
     id: 'lake-signals',
     title: 'Lake Signals',
     summary: 'Collaborative sensing and narrative mapping.',
     memberIds: ['bea', 'dina', 'eli'],
-    detailsHtml:
-      '<p>Lake Signals investigates local environmental stories through low-tech sensing and roleplay.</p><p><strong>Publications:</strong> 2 conference papers and 1 exhibition piece.</p>',
+    sections: [
+      {
+        paragraphs: [
+          'Lake Signals investigates local environmental stories through low-tech sensing and roleplay.',
+        ],
+      },
+      {
+        heading: 'Publications',
+        paragraphs: ['2 conference papers and 1 exhibition piece.'],
+      },
+    ],
   },
 ];
