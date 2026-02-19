@@ -38,22 +38,27 @@ type UseSceneTuningParams = {
 };
 
 export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) {
+  // Central source of live scene-tuning state for the app.
   const [sceneTuning, setSceneTuning] = useState<SceneTuning>(canonicalSceneTuningDefaults);
 
   useEffect(() => {
+    // On first mount, hydrate from localStorage (if present) with schema migration safeguards.
     setSceneTuning(loadStoredSceneTuning(localStorage));
   }, []);
 
   useEffect(() => {
+    // Persist every scene tuning update so refresh/reopen keeps the same layout values.
     persistSceneTuning(localStorage, sceneTuning);
   }, [sceneTuning]);
 
   const getDefaultCharacterOverride = useCallback(
     (characterId: string): ModelOverride => {
+      // Look up authored baseline transform values from content config.
       const character = sceneCharacters.find((item) => item.id === characterId);
       const [x, y, z] = character?.config.position ?? [0, 0, 0];
       const [rotX, rotY, rotZ] = character?.config.rotation ?? [0, 0, 0];
 
+      // Scale defaults to 1 (original model size).
       return { x, y, z, scale: 1, rotX, rotY, rotZ };
     },
     [sceneCharacters],
@@ -62,6 +67,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
   const getCharacterOverride = useCallback(
     (characterId: string, sceneMode: Mode = mode): ModelOverride => {
       const fallback = getDefaultCharacterOverride(characterId);
+      // People mode can use a separate override map to support different arrangement from home mode.
       if (sceneMode === 'people') return sceneTuning.peopleCharacterOverrides[characterId] ?? fallback;
       return sceneTuning.characterOverrides[characterId] ?? fallback;
     },
@@ -70,6 +76,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
 
   const handleTuningChange = useCallback((key: NumericSceneTuningKey, value: number) => {
     setSceneTuning((current) => {
+      // Some keys are mode-specific: in people mode they live under `peopleViewTuning`.
       if (mode === 'people' && peopleViewTuningKeys.includes(key as keyof PeopleViewTuning)) {
         const peopleKey = key as keyof PeopleViewTuning;
         return {
@@ -82,6 +89,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
   }, [mode]);
 
   const getTuningFieldValue = useCallback((key: NumericSceneTuningKey): number => {
+    // Mirror the same key-routing logic used in updates so UI sliders read from the right place.
     if (mode === 'people' && peopleViewTuningKeys.includes(key as keyof PeopleViewTuning)) {
       return sceneTuning.peopleViewTuning[key as keyof PeopleViewTuning];
     }
@@ -97,6 +105,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
   }, []);
 
   const handlePeopleLayoutColumnsChange = useCallback((key: 'peopleLayoutColumns' | 'peopleLayoutColumnsNarrow', value: number) => {
+    // Force user input to an integer in a safe range the UI layout supports.
     const next = Math.max(1, Math.min(6, Math.round(value)));
     setSceneTuning((current) => ({ ...current, [key]: next }));
   }, []);
@@ -130,6 +139,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
 
   const buildCompleteCharacterOverrides = useCallback(
     (sceneMode: 'home' | 'people') => {
+      // Build a complete map that contains every character ID, even if only a subset was manually edited.
       const ids = sceneCharacters.map((character) => character.id);
       const baseById = Object.fromEntries(
         sceneCharacters.map((character) => [character.id, getDefaultCharacterOverride(character.id)]),
@@ -141,6 +151,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
   );
 
   const buildCompleteEnvironmentOverrides = useCallback(() => {
+    // Environment IDs are defined by canonical defaults to keep export format stable.
     const environmentIds = Object.keys(canonicalSceneTuningDefaults.environmentOverrides);
     return buildCompleteOverrides(
       environmentIds,
@@ -154,6 +165,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
   }, []);
 
   const copyTuningJson = useCallback(async () => {
+    // Export includes complete maps so payload is portable and reproducible across machines.
     const exportPayload: SceneTuning = {
       ...sceneTuning,
       characterOverrides: buildCompleteCharacterOverrides('home'),

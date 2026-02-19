@@ -25,6 +25,8 @@ type SceneViewportProps = {
   onPeopleScrollEnabledChange: (enabled: boolean) => void;
 };
 
+// This component is a narrow adapter around LandingScene3D.
+// It decides when the 3D viewport should render and which interaction handlers are active.
 export default function SceneViewport({
   mode,
   scene3DFailed,
@@ -47,6 +49,7 @@ export default function SceneViewport({
   peopleScrollAnimated,
   onPeopleScrollEnabledChange,
 }: SceneViewportProps) {
+  // We only render the 3D canvas in Home/People mode, and skip it entirely if runtime failed.
   if ((mode !== 'home' && mode !== 'people') || scene3DFailed) return null;
 
   return (
@@ -57,6 +60,7 @@ export default function SceneViewport({
       onTouchStart={peopleScrollActive ? onTouchStart : undefined}
       onTouchMove={peopleScrollActive ? onTouchMove : undefined}
     >
+      {/* LandingScene3D receives all scene behavior as props so state stays controlled from the page/hook layer. */}
       <LandingScene3D
         characters={sceneCharacters}
         movementBehavior={movementBehavior}
