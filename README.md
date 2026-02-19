@@ -29,26 +29,26 @@ The 3D area is the heart of the app and is rendered with **Three.js** through Re
 
 If you need to study or Google specific parts of the stack, use these names and versions from `package.json`.
 
-### Core runtime [O: can you add brief explanations of what these do?]
+### Core runtime
 
-- **Node.js**: recommended **v20+** (LTS suggested). 
-- **Package manager**: npm (project ships with `package-lock.json`).
-- **Framework**: **Next.js 14.2.5**.
-- **UI library**: **React 18.3.1** + **react-dom 18.3.1**.
-- **Language**: **TypeScript 5.5.4**.
+- **Node.js**: recommended **v20+** (LTS suggested). Runs JavaScript outside the browser and executes all project tooling (`npm`, build, dev server).
+- **Package manager**: npm (project ships with `package-lock.json`). Installs dependencies and runs scripts such as `dev`, `build`, and `lint`.
+- **Framework**: **Next.js 14.2.5**. Provides routing, bundling, dev server, and production build pipeline for the app.
+- **UI library**: **React 18.3.1** + **react-dom 18.3.1**. Builds interactive UI from reusable components and state.
+- **Language**: **TypeScript 5.5.4**. Adds static typing so editor tooling and builds catch errors earlier.
 
-### 3D and animation [O: can you add brief explanations of what these do?]
+### 3D and animation
 
-- **three 0.166.1**: low-level 3D engine.
-- **@react-three/fiber 8.16.8**: React renderer for Three.js.
-- **@react-three/drei 9.108.3**: utility components/helpers for react-three-fiber.
-- **framer-motion 11.3.11**: UI and motion animation helpers.
+- **three 0.166.1**: low-level 3D engine for scenes, cameras, meshes, lights, materials, and animation loops.
+- **@react-three/fiber 8.16.8**: React renderer for Three.js so you can build 3D scenes with React components/hooks.
+- **@react-three/drei 9.108.3**: ready-made helpers (controls, loaders, effects, etc.) that reduce scene boilerplate.
+- **framer-motion 11.3.11**: declarative UI animation library used for smooth transitions and motion interactions.
 
-### Linting and typing [O: can you add brief explanations of what these do?]
+### Linting and typing
 
-- **eslint 8.57.0**
-- **eslint-config-next 14.2.5**
-- **@types/node, @types/react, @types/react-dom** for TypeScript type definitions.
+- **eslint 8.57.0**: static code-quality checks (finds suspicious patterns, style issues, and common mistakes).
+- **eslint-config-next 14.2.5**: Next.js recommended ESLint rules for React + App Router projects.
+- **@types/node, @types/react, @types/react-dom**: official type definitions so TypeScript understands these runtime libraries.
 
 ---
 
@@ -56,7 +56,9 @@ If you need to study or Google specific parts of the stack, use these names and 
 
 ### Step A: Install prerequisites
 
-1. Install **Node.js 20+**. [O: how do I do it?]
+1. Install **Node.js 20+**.
+   - Go to <https://nodejs.org> and install the **LTS** version (recommended for beginners).
+   - macOS/Linux users can also use `nvm` if preferred; Windows users can use the official installer.
 2. Verify installation:
 
 ```bash
@@ -95,7 +97,9 @@ npm run lint
 
 ---
 
-## 4) NPM scripts reference [O: what do I do with those?]
+## 4) NPM scripts reference
+
+Use these commands from the project root terminal to run, validate, and package the app during development.
 
 - `npm run dev` → start local development server with hot reload.
 - `npm run build` → create optimized production build.
@@ -104,35 +108,36 @@ npm run lint
 
 ---
 
-## 5) Project structure (high-value files) [O: can you explain those by giving clear references to the current web site interface?]
+## 5) Project structure (high-value files)
 
 - `app/page.tsx`:
   - Main page-level controller.
   - Holds top-level state (`mode`, selected entities, edit mode, scroll state).
-  - Connects scene viewport, nav, mode-specific panels, and tuning panel.
+  - Interface reference: this powers the Home/People/Projects switching, detail panel open/close behavior, and edit-mode toggles visible in the current site.
 
 - `app/components/LandingScene3D.tsx`:
   - Main 3D scene component.
-  - Receives characters, tuning values, and interaction callbacks.
+  - Interface reference: this is the full-screen 3D environment in the background, including character placement and click interactions.
 
 - `app/components/modes/SceneViewport.tsx`:
   - Wrapper that decides when to show the 3D scene.
-  - Wires wheel/touch handlers only when people-scroll mode is active.
+  - Interface reference: controls whether the 3D canvas is visible and activates custom wheel/touch behavior while you browse People mode.
 
 - `app/hooks/useSceneTuning.ts`:
   - Central hook for scene tuning state.
-  - Persists tuning to `localStorage`.
-  - Updates character/environment/fire overrides.
+  - Interface reference: drives the edit panel slider values and model transform updates while edit mode is enabled.
 
 - `app/components/scene3d/tuningSchema.ts`:
   - Canonical defaults + slider metadata.
-  - Versioning/migration helpers for saved tuning payloads.
+  - Interface reference: defines what sliders/options appear in the tuning panel and what value ranges they allow.
 
 - `app/components/scene3d/defaults.ts`:
   - Curated baseline tuning values committed to source control.
+  - Interface reference: controls the initial "look" of the world before a user applies local edits.
 
 - `app/data/content.ts`:
   - People/project content and scene character configuration.
+  - Interface reference: updates to this file appear directly in People cards/details, Projects panels, and character metadata.
 
 ---
 
@@ -140,8 +145,10 @@ npm run lint
 
 A useful way to understand this codebase:
 
-- **Global page state** (in `app/page.tsx`) decides *which mode is visible* and *which panels are open*. [O: where is this, I couldn't find such thing in global?]
-- **3D scene state** (from `useSceneTuning`) decides *how objects look and where they sit*. [O: where is this?]
+- **Global page state** (in `app/page.tsx`) decides *which mode is visible* and *which panels are open*.
+  - Clarification: "global" here means "global to this page component," not app-wide Redux/Context state. It is the top-level `useState` block near the top of `app/page.tsx`.
+- **3D scene state** (from `useSceneTuning`) decides *how objects look and where they sit*.
+  - Clarification: this comes from `app/hooks/useSceneTuning.ts` and is consumed by `SceneViewport`/`LandingScene3D` plus the tuning panel.
 - **Mode components** (`HomeModeContent`, `PeopleModeContent`, `ProjectsModeContent`) render mode-specific UI based on current page state.
 
 Think of it as:
@@ -244,4 +251,4 @@ If you are new to this stack, learn in this order:
 
 ---
 
-If you want, a next README improvement can be a **"first 30 minutes" walkthrough** with screenshots of each mode and edit panel. [O: that would help a lot thank you?]
+If you want, a next README improvement can be a **"first 30 minutes" walkthrough** with screenshots of each mode and edit panel. (Great suggestion — this is now a recommended next documentation task.)
