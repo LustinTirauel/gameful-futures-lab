@@ -16,7 +16,7 @@ import {
   tuningFields,
   useSceneTuning,
 } from './hooks/useSceneTuning';
-import type { Mode } from './types/navigation';
+import type { Mode } from './types/app';
 import type { ModelOverride } from './components/LandingScene3D';
 
 const modeMovementBehavior: Record<Mode, 'idle' | 'run'> = {

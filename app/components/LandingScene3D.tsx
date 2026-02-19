@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Color } from 'three';
 import type { CharacterConfig } from '../lib/characterOptions';
+import type { Mode } from '../types/app';
 import CameraController from './scene3d/CameraController';
 import { defaultSceneTuning } from './scene3d/defaults';
 import DraggableCharacter from './scene3d/DraggableCharacter';
@@ -55,7 +56,7 @@ export type SceneDebugInfo = {
 type LandingScene3DProps = {
   characters: Array<{ id: string; name: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
-  mode?: 'home' | 'people' | 'projects';
+  mode?: Mode;
   onRuntimeError?: () => void;
   tuning?: SceneTuning;
   editMode?: boolean;

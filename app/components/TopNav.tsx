@@ -1,4 +1,4 @@
-import type { Mode } from '../types/navigation';
+import type { Mode } from '../types/app';
 
 type TopNavProps = {
   mode: Mode;
