@@ -29,22 +29,22 @@ The 3D area is the heart of the app and is rendered with **Three.js** through Re
 
 If you need to study or Google specific parts of the stack, use these names and versions from `package.json`.
 
-### Core runtime
+### Core runtime [O: can you add brief explanations of what these do?]
 
-- **Node.js**: recommended **v20+** (LTS suggested).
+- **Node.js**: recommended **v20+** (LTS suggested). 
 - **Package manager**: npm (project ships with `package-lock.json`).
 - **Framework**: **Next.js 14.2.5**.
 - **UI library**: **React 18.3.1** + **react-dom 18.3.1**.
 - **Language**: **TypeScript 5.5.4**.
 
-### 3D and animation
+### 3D and animation [O: can you add brief explanations of what these do?]
 
 - **three 0.166.1**: low-level 3D engine.
 - **@react-three/fiber 8.16.8**: React renderer for Three.js.
 - **@react-three/drei 9.108.3**: utility components/helpers for react-three-fiber.
 - **framer-motion 11.3.11**: UI and motion animation helpers.
 
-### Linting and typing
+### Linting and typing [O: can you add brief explanations of what these do?]
 
 - **eslint 8.57.0**
 - **eslint-config-next 14.2.5**
@@ -56,7 +56,7 @@ If you need to study or Google specific parts of the stack, use these names and 
 
 ### Step A: Install prerequisites
 
-1. Install **Node.js 20+**.
+1. Install **Node.js 20+**. [O: how do I do it?]
 2. Verify installation:
 
 ```bash
@@ -95,7 +95,7 @@ npm run lint
 
 ---
 
-## 4) NPM scripts reference
+## 4) NPM scripts reference [O: what do I do with those?]
 
 - `npm run dev` → start local development server with hot reload.
 - `npm run build` → create optimized production build.
@@ -104,7 +104,7 @@ npm run lint
 
 ---
 
-## 5) Project structure (high-value files)
+## 5) Project structure (high-value files) [O: can you explain those by giving clear references to the current web site interface?]
 
 - `app/page.tsx`:
   - Main page-level controller.
@@ -140,8 +140,8 @@ npm run lint
 
 A useful way to understand this codebase:
 
-- **Global page state** (in `app/page.tsx`) decides *which mode is visible* and *which panels are open*.
-- **3D scene state** (from `useSceneTuning`) decides *how objects look and where they sit*.
+- **Global page state** (in `app/page.tsx`) decides *which mode is visible* and *which panels are open*. [O: where is this, I couldn't find such thing in global?]
+- **3D scene state** (from `useSceneTuning`) decides *how objects look and where they sit*. [O: where is this?]
 - **Mode components** (`HomeModeContent`, `PeopleModeContent`, `ProjectsModeContent`) render mode-specific UI based on current page state.
 
 Think of it as:
@@ -244,4 +244,4 @@ If you are new to this stack, learn in this order:
 
 ---
 
-If you want, a next README improvement can be a **"first 30 minutes" walkthrough** with screenshots of each mode and edit panel.
+If you want, a next README improvement can be a **"first 30 minutes" walkthrough** with screenshots of each mode and edit panel. [O: that would help a lot thank you?]
