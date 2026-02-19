@@ -24,7 +24,23 @@ export default function ProjectsLayer({ projects, selectedProject, onProjectSele
         <aside className="panel">
           <h3>{project.title}</h3>
           <p>{project.summary}</p>
-          <div dangerouslySetInnerHTML={{ __html: project.detailsHtml }} />
+          <div>
+            {project.sections.map((section, sectionIndex) => (
+              <section key={`${project.id}-section-${sectionIndex}`}>
+                {section.heading && <h4>{section.heading}</h4>}
+                {section.paragraphs.map((paragraph, paragraphIndex) => (
+                  <p key={`${project.id}-section-${sectionIndex}-paragraph-${paragraphIndex}`}>{paragraph}</p>
+                ))}
+                {section.bullets && section.bullets.length > 0 && (
+                  <ul>
+                    {section.bullets.map((bullet, bulletIndex) => (
+                      <li key={`${project.id}-section-${sectionIndex}-bullet-${bulletIndex}`}>{bullet}</li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            ))}
+          </div>
           <p>
             <strong>Team:</strong> {project.memberIds.join(', ')}
           </p>
