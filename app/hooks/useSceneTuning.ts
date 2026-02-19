@@ -5,9 +5,8 @@ import {
   type PeopleViewTuning,
   type SceneTuning,
 } from '../components/LandingScene3D';
-import type { Mode } from '../types/navigation';
-
-export type PeopleLayoutPreset = 'regular' | 'custom';
+import type { PeopleLayoutPreset } from '../components/scene3d/types';
+import type { Mode } from '../types/app';
 export type EditableModelId = string | 'fire';
 export type NumericSceneTuningKey = Exclude<
   keyof SceneTuning,
