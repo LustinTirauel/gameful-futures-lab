@@ -1,4 +1,4 @@
-type Mode = 'home' | 'people' | 'projects';
+import type { Mode } from '../types/navigation';
 
 type TopNavProps = {
   mode: Mode;

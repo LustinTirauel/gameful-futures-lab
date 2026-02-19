@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { people } from '../data/content';
-
-type Mode = 'home' | 'people' | 'projects';
+import type { Mode } from '../types/navigation';
 
 type CharacterLayerProps = {
   mode: Mode;
@@ -33,7 +32,7 @@ export default function CharacterLayer({
 
   return (
     <section className="characters">
-      {activePeople.map((person, index) => {
+      {activePeople.map((person) => {
         const running = isRunning;
         return (
           <motion.article
