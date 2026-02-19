@@ -1,9 +1,7 @@
 import type { ModelOverride, SceneTuning } from './LandingScene3D';
-import type { Mode } from '../types/navigation';
-import type {
-  NumericSceneTuningKey,
-  PeopleLayoutPreset,
-} from '../hooks/useSceneTuning';
+import type { PeopleLayoutPreset } from './scene3d/types';
+import type { Mode } from '../types/app';
+import type { NumericSceneTuningKey } from '../hooks/useSceneTuning';
 
 type SceneTuningPanelProps = {
   mode: Mode;
