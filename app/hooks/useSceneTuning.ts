@@ -1,66 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  defaultSceneTuning,
   type ModelOverride,
   type PeopleViewTuning,
   type SceneTuning,
 } from '../components/LandingScene3D';
+import {
+  buildCompleteOverrides,
+  canonicalSceneTuningDefaults,
+  loadStoredSceneTuning,
+  persistSceneTuning,
+  peopleViewTuningKeys,
+  type NumericSceneTuningKey,
+} from '../components/scene3d/tuningSchema';
 import type { PeopleLayoutPreset } from '../components/scene3d/types';
 import type { Mode } from '../types/app';
+export type { NumericSceneTuningKey } from '../components/scene3d/tuningSchema';
 export type EditableModelId = string | 'fire';
-export type NumericSceneTuningKey = Exclude<
-  keyof SceneTuning,
-  | 'characterOverrides'
-  | 'peopleCharacterOverrides'
-  | 'peopleViewTuning'
-  | 'peopleHueColor'
-  | 'peopleLayoutPreset'
-  | 'peopleLayoutPresetNarrow'
-  | 'fireOverride'
-  | 'environmentOverrides'
->;
-
-const sceneTuningStorageKey = 'gfl-scene-tuning-v1';
-
-const peopleViewKeys: Array<keyof PeopleViewTuning> = [
-  'cameraX',
-  'cameraY',
-  'cameraZ',
-  'fov',
-  'fogNear',
-  'fogFar',
-  'characterScale',
-  'sceneOffsetX',
-  'sceneOffsetY',
-  'sceneRadius',
-  'ambientLightIntensity',
-  'directionalLightIntensity',
-  'directionalLightX',
-  'directionalLightY',
-  'directionalLightZ',
-];
-
-export const tuningFields: Array<{ key: NumericSceneTuningKey; label: string; min: number; max: number; step: number }> = [
-  { key: 'cameraX', label: 'Camera X', min: 2, max: 14, step: 0.1 },
-  { key: 'cameraY', label: 'Camera Y', min: 1.5, max: 12, step: 0.1 },
-  { key: 'cameraZ', label: 'Camera Z (distance)', min: 2, max: 14, step: 0.1 },
-  { key: 'fov', label: 'FOV', min: 18, max: 60, step: 1 },
-  { key: 'fogNear', label: 'Fog Near', min: 1, max: 28, step: 0.5 },
-  { key: 'fogFar', label: 'Fog Far', min: 8, max: 60, step: 0.5 },
-  { key: 'characterScale', label: 'Character Scale', min: 0.4, max: 1.4, step: 0.01 },
-  { key: 'sceneOffsetX', label: 'Scene Offset X (%)', min: -40, max: 20, step: 0.5 },
-  { key: 'sceneOffsetY', label: 'Scene Offset Y (%)', min: -30, max: 25, step: 0.5 },
-  { key: 'sceneRadius', label: 'Scene Size / Radius', min: 6, max: 120, step: 1 },
-  { key: 'ambientLightIntensity', label: 'Ambient Light Intensity', min: 0, max: 2.5, step: 0.05 },
-  { key: 'directionalLightIntensity', label: 'Directional Light Intensity', min: 0, max: 3, step: 0.05 },
-  { key: 'directionalLightX', label: 'Light Direction X', min: -20, max: 20, step: 0.1 },
-  { key: 'directionalLightY', label: 'Light Direction Y', min: -20, max: 20, step: 0.1 },
-  { key: 'directionalLightZ', label: 'Light Direction Z', min: -20, max: 20, step: 0.1 },
-  { key: 'preRunTurnSeconds', label: 'People pre-run turn (s)', min: 0, max: 4, step: 0.05 },
-  { key: 'runDurationSeconds', label: 'People run duration (s)', min: 0.5, max: 10, step: 0.1 },
-  { key: 'peopleRunAnimationSpeed', label: 'People run animation speed', min: 0.6, max: 3, step: 0.05 },
-  { key: 'peopleLineupSpacing', label: 'People lineup spacing', min: 0.2, max: 0.7, step: 0.01 },
-];
 
 export const peopleLayoutOptions: Array<{ value: PeopleLayoutPreset; label: string }> = [
   { value: 'regular', label: 'Regular' },
@@ -83,46 +38,14 @@ type UseSceneTuningParams = {
 };
 
 export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) {
-  const [sceneTuning, setSceneTuning] = useState<SceneTuning>(defaultSceneTuning);
+  const [sceneTuning, setSceneTuning] = useState<SceneTuning>(canonicalSceneTuningDefaults);
 
   useEffect(() => {
-    const saved = localStorage.getItem(sceneTuningStorageKey);
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved) as Partial<SceneTuning>;
-      setSceneTuning((current) => ({
-        ...current,
-        ...parsed,
-        characterOverrides: {
-          ...current.characterOverrides,
-          ...(parsed.characterOverrides ?? {}),
-        },
-        peopleCharacterOverrides: {
-          ...current.peopleCharacterOverrides,
-          ...(parsed.peopleCharacterOverrides ?? {}),
-        },
-        peopleViewTuning: {
-          ...current.peopleViewTuning,
-          ...(parsed.peopleViewTuning ?? {}),
-        },
-        peopleHueColor: parsed.peopleHueColor ?? current.peopleHueColor,
-        fireOverride: {
-          ...current.fireOverride,
-          ...(parsed.fireOverride ?? {}),
-        },
-        environmentOverrides: {
-          ...current.environmentOverrides,
-          ...(parsed.environmentOverrides ?? {}),
-        },
-      }));
-    } catch {
-      // Keep defaults when saved JSON is invalid.
-    }
+    setSceneTuning(loadStoredSceneTuning(localStorage));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(sceneTuningStorageKey, JSON.stringify(sceneTuning));
+    persistSceneTuning(localStorage, sceneTuning);
   }, [sceneTuning]);
 
   const getDefaultCharacterOverride = useCallback(
@@ -147,7 +70,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
 
   const handleTuningChange = useCallback((key: NumericSceneTuningKey, value: number) => {
     setSceneTuning((current) => {
-      if (mode === 'people' && peopleViewKeys.includes(key as keyof PeopleViewTuning)) {
+      if (mode === 'people' && peopleViewTuningKeys.includes(key as keyof PeopleViewTuning)) {
         const peopleKey = key as keyof PeopleViewTuning;
         return {
           ...current,
@@ -159,7 +82,7 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
   }, [mode]);
 
   const getTuningFieldValue = useCallback((key: NumericSceneTuningKey): number => {
-    if (mode === 'people' && peopleViewKeys.includes(key as keyof PeopleViewTuning)) {
+    if (mode === 'people' && peopleViewTuningKeys.includes(key as keyof PeopleViewTuning)) {
       return sceneTuning.peopleViewTuning[key as keyof PeopleViewTuning];
     }
     return sceneTuning[key];
@@ -205,12 +128,29 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
     setSceneTuning((current) => ({ ...current, fireOverride: nextOverride }));
   }, []);
 
-  const buildCompleteCharacterOverrides = useCallback((sceneMode: 'home' | 'people') => {
-    return Object.fromEntries(sceneCharacters.map((character) => [character.id, getCharacterOverride(character.id, sceneMode)]));
-  }, [getCharacterOverride, sceneCharacters]);
+  const buildCompleteCharacterOverrides = useCallback(
+    (sceneMode: 'home' | 'people') => {
+      const ids = sceneCharacters.map((character) => character.id);
+      const baseById = Object.fromEntries(
+        sceneCharacters.map((character) => [character.id, getDefaultCharacterOverride(character.id)]),
+      );
+      const editsById = sceneMode === 'people' ? sceneTuning.peopleCharacterOverrides : sceneTuning.characterOverrides;
+      return buildCompleteOverrides(ids, baseById, editsById);
+    },
+    [getDefaultCharacterOverride, sceneCharacters, sceneTuning.characterOverrides, sceneTuning.peopleCharacterOverrides],
+  );
+
+  const buildCompleteEnvironmentOverrides = useCallback(() => {
+    const environmentIds = Object.keys(canonicalSceneTuningDefaults.environmentOverrides);
+    return buildCompleteOverrides(
+      environmentIds,
+      canonicalSceneTuningDefaults.environmentOverrides,
+      sceneTuning.environmentOverrides,
+    );
+  }, [sceneTuning.environmentOverrides]);
 
   const resetTuning = useCallback(() => {
-    setSceneTuning(defaultSceneTuning);
+    setSceneTuning(canonicalSceneTuningDefaults);
   }, []);
 
   const copyTuningJson = useCallback(async () => {
@@ -218,9 +158,10 @@ export function useSceneTuning({ mode, sceneCharacters }: UseSceneTuningParams) 
       ...sceneTuning,
       characterOverrides: buildCompleteCharacterOverrides('home'),
       peopleCharacterOverrides: buildCompleteCharacterOverrides('people'),
+      environmentOverrides: buildCompleteEnvironmentOverrides(),
     };
     await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
-  }, [buildCompleteCharacterOverrides, sceneTuning]);
+  }, [buildCompleteCharacterOverrides, buildCompleteEnvironmentOverrides, sceneTuning]);
 
   return {
     sceneTuning,

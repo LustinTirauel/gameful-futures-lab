@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import SceneTuningPanel from './components/SceneTuningPanel';
+import { sceneTuningSliderFields } from './components/scene3d/tuningSchema';
 import TopNav from './components/TopNav';
 import HomeModeContent from './components/modes/HomeModeContent';
 import PeopleModeContent from './components/modes/PeopleModeContent';
@@ -13,7 +14,6 @@ import {
   type EditableModelId,
   modelFields,
   peopleLayoutOptions,
-  tuningFields,
   useSceneTuning,
 } from './hooks/useSceneTuning';
 import type { Mode } from './types/app';
@@ -42,6 +42,10 @@ export default function Home() {
   const sceneCharacters = useMemo(
     () => people.map((person) => ({ id: person.id, name: person.name, config: characterConfigs[person.id] })),
     [],
+  );
+  const tuningFields = useMemo(
+    () => sceneTuningSliderFields.filter((field) => field.appliesTo === 'shared' || field.appliesTo === mode),
+    [mode],
   );
 
   const {
