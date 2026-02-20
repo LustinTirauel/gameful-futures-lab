@@ -7,11 +7,19 @@ type UsePeopleScrollControlsParams = {
 
 const lineHeightPx = 16;
 const pageHeightPx = 120;
+const wheelProgressPerViewport = 0.4;
+const touchProgressPerViewport = 0.9;
+const minPixelDelta = 0.5;
 
 function normalizeWheelDelta(event: React.WheelEvent<HTMLDivElement>): number {
   if (event.deltaMode === 1) return event.deltaY * lineHeightPx;
   if (event.deltaMode === 2) return event.deltaY * pageHeightPx;
   return event.deltaY;
+}
+
+function getViewportHeightPx(): number {
+  if (typeof window === 'undefined') return 900;
+  return Math.max(1, window.innerHeight);
 }
 
 export function usePeopleScrollControls({ enabled, onProgressDelta }: UsePeopleScrollControlsParams) {
@@ -21,7 +29,12 @@ export function usePeopleScrollControls({ enabled, onProgressDelta }: UsePeopleS
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (!enabled) return;
       event.preventDefault();
-      onProgressDelta(normalizeWheelDelta(event) * 0.0008);
+
+      const pixelDelta = normalizeWheelDelta(event);
+      if (Math.abs(pixelDelta) < minPixelDelta) return;
+
+      const viewportHeightPx = getViewportHeightPx();
+      onProgressDelta((pixelDelta / viewportHeightPx) * wheelProgressPerViewport);
     },
     [enabled, onProgressDelta],
   );
@@ -40,7 +53,11 @@ export function usePeopleScrollControls({ enabled, onProgressDelta }: UsePeopleS
       const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
       const deltaY = touchStartYRef.current - currentY;
       touchStartYRef.current = currentY;
-      onProgressDelta(deltaY * 0.0025);
+
+      if (Math.abs(deltaY) < minPixelDelta) return;
+
+      const viewportHeightPx = getViewportHeightPx();
+      onProgressDelta((deltaY / viewportHeightPx) * touchProgressPerViewport);
     },
     [enabled, onProgressDelta],
   );

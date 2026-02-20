@@ -1,6 +1,5 @@
 'use client';
 
-import { Text } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Color } from 'three';
@@ -71,22 +70,6 @@ type LandingScene3DProps = {
   onPeopleScrollEnabledChange?: (enabled: boolean) => void;
   onDebugInfoChange?: (info: SceneDebugInfo) => void;
 };
-
-function TextWarmup() {
-  return (
-    <group position={[0, -1000, 0]}>
-      <Text
-        fontSize={0.1}
-        color="#2f3033"
-        fillOpacity={0}
-        anchorX="center"
-        anchorY="middle"
-      >
-        warmup
-      </Text>
-    </group>
-  );
-}
 
 export default function LandingScene3D({
   characters,
@@ -316,13 +299,16 @@ export default function LandingScene3D({
   const customPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
-    customBottomTriggerOverflowPx > 0.5;
+    customBottomStopOverflowPx > 0.5;
 
-  const peopleScrollEnabled =
+  // Enable scroll interaction immediately in People mode whenever there is any meaningful scroll range.
+  // This avoids waiting for nameplates to cross the viewport trigger line before responding to wheel/touch input.
+  const regularPeopleScrollEnabled =
     isPeopleMode &&
-    (activeLayoutPreset !== 'custom'
-      ? peopleLayoutOverflowsViewport
-      : customPeopleScrollEnabled);
+    activeLayoutPreset !== 'custom' &&
+    maxPeopleRowOffsetForStop > 0.01;
+
+  const peopleScrollEnabled = regularPeopleScrollEnabled || customPeopleScrollEnabled;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
@@ -571,7 +557,6 @@ export default function LandingScene3D({
         camera={{ position: [effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ], fov: effectiveTuning.fov }}
         shadows
       >
-        <TextWarmup />
         <CameraController
           cameraX={effectiveTuning.cameraX}
           cameraY={effectiveTuning.cameraY}

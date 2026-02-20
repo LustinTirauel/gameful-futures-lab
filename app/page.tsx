@@ -1,13 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { type ComponentType, useEffect, useMemo, useState } from 'react';
 import SceneTuningPanel from './components/SceneTuningPanel';
 import { sceneTuningSliderFields } from './components/scene3d/tuningSchema';
 import TopNav from './components/TopNav';
 import HomeModeContent from './components/modes/HomeModeContent';
 import PeopleModeContent from './components/modes/PeopleModeContent';
 import ProjectsModeContent from './components/modes/ProjectsModeContent';
-import SceneViewport from './components/modes/SceneViewport';
 import { characterConfigs, people } from './data/content';
 import { usePeopleScrollControls } from './hooks/usePeopleScrollControls';
 import {
@@ -48,6 +47,27 @@ export default function Home() {
   const [peopleScrollAnimated, setPeopleScrollAnimated] = useState(true);
   // True when people mode has enabled custom wheel/touch handling.
   const [peopleScrollEnabled, setPeopleScrollEnabled] = useState(false);
+
+
+  const [SceneViewportComponent, setSceneViewportComponent] = useState<ComponentType<any> | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    import('./components/modes/SceneViewport')
+      .then((module) => {
+        if (!mounted) return;
+        setSceneViewportComponent(() => module.default);
+      })
+      .catch((error) => {
+        console.error('Failed to load 3D scene viewport chunk.', error);
+        if (mounted) setScene3DFailed(true);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const sceneCharacters = useMemo(
     // Convert content data into the exact structure expected by the 3D scene component.
@@ -149,7 +169,8 @@ export default function Home() {
 
   return (
     <main className="main" style={{ minHeight: '100vh' }}>
-      <SceneViewport
+      {SceneViewportComponent && (
+        <SceneViewportComponent
         mode={mode}
         scene3DFailed={scene3DFailed}
         peopleScrollActive={peopleScrollActive}
@@ -170,7 +191,8 @@ export default function Home() {
         peopleScrollProgress={peopleScrollProgress}
         peopleScrollAnimated={peopleScrollAnimated}
         onPeopleScrollEnabledChange={setPeopleScrollEnabled}
-      />
+        />
+      )}
 
       <TopNav mode={mode} onModeChange={handleModeChange} />
       <HomeModeContent mode={mode} editMode={editMode} />
