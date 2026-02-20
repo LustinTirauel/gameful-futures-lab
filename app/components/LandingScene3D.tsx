@@ -681,6 +681,7 @@ export default function LandingScene3D({
             <group key={character.id}>
               {isPeopleMode && (
                 <NamePlate3D
+                  name={character.name}
                   position={nameplatePosition}
                   rotationY={southFacingY}
                   opacity={nameplateOpacity}
