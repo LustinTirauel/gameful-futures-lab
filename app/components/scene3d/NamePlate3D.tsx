@@ -21,13 +21,14 @@ export default function NamePlate3D({
     if (!context) return null;
 
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#f1f2f4';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
     context.fillStyle = '#2f3033';
     context.font = "700 72px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     context.textAlign = 'center';
     context.textBaseline = 'middle';
+    context.strokeStyle = 'rgba(241, 242, 244, 0.85)';
+    context.lineWidth = 7;
+    context.lineJoin = 'round';
+    context.strokeText(name, canvas.width / 2, canvas.height / 2 + 2);
     context.fillText(name, canvas.width / 2, canvas.height / 2 + 2);
 
     const texture = new CanvasTexture(canvas);
