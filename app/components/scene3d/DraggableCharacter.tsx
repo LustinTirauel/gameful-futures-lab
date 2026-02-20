@@ -78,6 +78,7 @@ export default function DraggableCharacter({
   }, [override.x, override.z]);
 
   useEffect(() => {
+    // Only restart the enter-people transition when mode changes, not on every scroll-driven lineup target update.
     if (!isPeopleMode) {
       setLayoutTransitionProgress(1);
       setIsLayoutTransitioning(false);
@@ -109,7 +110,7 @@ export default function DraggableCharacter({
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [id, isPeopleMode, lineupTarget.x, lineupTarget.z, override.x, override.z, totalTransitionSeconds]);
+  }, [id, isPeopleMode, override.x, override.z, totalTransitionSeconds]);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
