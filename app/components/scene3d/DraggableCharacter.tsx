@@ -115,6 +115,57 @@ export default function DraggableCharacter({
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
 
+    if (isPeopleMode && peopleScrollAnimated && !editMode && peopleTransitionProgress >= 0.999) {
+      const deltaX = lineupTarget.x - groupRef.current.position.x;
+      const deltaZ = lineupTarget.z - groupRef.current.position.z;
+      const distanceToTarget = Math.hypot(deltaX, deltaZ);
+
+      const follow = isDragging.current ? 0.42 : 0.18;
+      groupRef.current.position.x += deltaX * follow;
+      groupRef.current.position.z += deltaZ * follow;
+
+      const isRunningNow = distanceToTarget > 0.03;
+      if (isRunningNow !== isRunningInPeople) {
+        setIsRunningInPeople(isRunningNow);
+      }
+
+      const hasArrived = distanceToTarget < 0.02;
+      if (hasArrived !== hasArrivedRef.current) {
+        hasArrivedRef.current = hasArrived;
+        onArrivalChange?.(id, hasArrived);
+      }
+
+      const bob = isRunningNow ? Math.abs(Math.sin(clock.elapsedTime * 5.4 + id.charCodeAt(0) * 0.18)) * 0.045 : 0;
+      groupRef.current.position.y = peopleFinalY + bob;
+
+      const desiredRotY = isRunningNow
+        ? Math.atan2(deltaX, deltaZ)
+        : peopleFinalRotY;
+      groupRef.current.rotation.y += (desiredRotY - groupRef.current.rotation.y) * 0.12;
+      groupRef.current.rotation.x += (peopleFinalRotX - groupRef.current.rotation.x) * 0.12;
+      groupRef.current.rotation.z += (peopleFinalRotZ - groupRef.current.rotation.z) * 0.12;
+
+      if (onWorldPositionChange) {
+        const currentPosition = {
+          x: groupRef.current.position.x,
+          y: groupRef.current.position.y,
+          z: groupRef.current.position.z,
+        };
+        const previousPosition = lastReportedWorldPosition.current;
+        const changedEnough =
+          !previousPosition ||
+          Math.abs(previousPosition.x - currentPosition.x) > 0.01 ||
+          Math.abs(previousPosition.y - currentPosition.y) > 0.01 ||
+          Math.abs(previousPosition.z - currentPosition.z) > 0.01;
+
+        if (changedEnough) {
+          lastReportedWorldPosition.current = currentPosition;
+          onWorldPositionChange(id, currentPosition);
+        }
+      }
+      return;
+    }
+
     if (isPeopleMode && !peopleScrollAnimated && !editMode) {
       groupRef.current.position.x += (lineupTarget.x - groupRef.current.position.x) * 0.24;
       groupRef.current.position.z += (lineupTarget.z - groupRef.current.position.z) * 0.24;
