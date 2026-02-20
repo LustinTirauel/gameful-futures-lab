@@ -299,13 +299,16 @@ export default function LandingScene3D({
   const customPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
-    customBottomTriggerOverflowPx > 0.5;
+    customBottomStopOverflowPx > 0.5;
 
-  const peopleScrollEnabled =
+  // Enable scroll interaction immediately in People mode whenever there is any meaningful scroll range.
+  // This avoids waiting for nameplates to cross the viewport trigger line before responding to wheel/touch input.
+  const regularPeopleScrollEnabled =
     isPeopleMode &&
-    (activeLayoutPreset !== 'custom'
-      ? peopleLayoutOverflowsViewport
-      : customPeopleScrollEnabled);
+    activeLayoutPreset !== 'custom' &&
+    maxPeopleRowOffsetForStop > 0.01;
+
+  const peopleScrollEnabled = regularPeopleScrollEnabled || customPeopleScrollEnabled;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
