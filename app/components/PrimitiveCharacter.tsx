@@ -2,7 +2,7 @@
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
-import type { GroupProps } from '@react-three/fiber';
+import type { ThreeElements } from '@react-three/fiber';
 import type { Group } from 'three';
 
 type HeadShape = 'sphere' | 'box' | 'cone';
@@ -19,7 +19,7 @@ type CharacterColors = {
   accessory: string;
 };
 
-type PrimitiveCharacterProps = GroupProps & {
+type PrimitiveCharacterProps = ThreeElements['group'] & {
   headShape?: HeadShape;
   bodyShape?: BodyShape;
   legShape?: LegShape;
