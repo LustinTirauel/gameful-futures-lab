@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import SceneTuningPanel from './components/SceneTuningPanel';
 import { sceneTuningSliderFields } from './components/scene3d/tuningSchema';
 import TopNav from './components/TopNav';
 import HomeModeContent from './components/modes/HomeModeContent';
 import PeopleModeContent from './components/modes/PeopleModeContent';
 import ProjectsModeContent from './components/modes/ProjectsModeContent';
-import SceneViewport from './components/modes/SceneViewport';
+const SceneViewport = dynamic(() => import('./components/modes/SceneViewport'), { ssr: false });
 import { characterConfigs, people } from './data/content';
 import { usePeopleScrollControls } from './hooks/usePeopleScrollControls';
 import {
