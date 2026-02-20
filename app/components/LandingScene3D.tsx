@@ -1,6 +1,5 @@
 'use client';
 
-import { Text } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Color } from 'three';
@@ -71,22 +70,6 @@ type LandingScene3DProps = {
   onPeopleScrollEnabledChange?: (enabled: boolean) => void;
   onDebugInfoChange?: (info: SceneDebugInfo) => void;
 };
-
-function TextWarmup() {
-  return (
-    <group position={[0, -1000, 0]}>
-      <Text
-        fontSize={0.1}
-        color="#2f3033"
-        fillOpacity={0}
-        anchorX="center"
-        anchorY="middle"
-      >
-        warmup
-      </Text>
-    </group>
-  );
-}
 
 export default function LandingScene3D({
   characters,
@@ -571,7 +554,6 @@ export default function LandingScene3D({
         camera={{ position: [effectiveTuning.cameraX, effectiveTuning.cameraY, effectiveTuning.cameraZ], fov: effectiveTuning.fov }}
         shadows
       >
-        <TextWarmup />
         <CameraController
           cameraX={effectiveTuning.cameraX}
           cameraY={effectiveTuning.cameraY}
@@ -699,7 +681,6 @@ export default function LandingScene3D({
             <group key={character.id}>
               {isPeopleMode && (
                 <NamePlate3D
-                  name={character.name}
                   position={nameplatePosition}
                   rotationY={southFacingY}
                   opacity={nameplateOpacity}

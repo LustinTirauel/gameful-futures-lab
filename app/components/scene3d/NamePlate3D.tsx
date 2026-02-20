@@ -1,12 +1,8 @@
-import { Text } from '@react-three/drei';
-
 export default function NamePlate3D({
-  name,
   position,
   rotationY,
   opacity,
 }: {
-  name: string;
   position: [number, number, number];
   rotationY: number;
   opacity: number;
@@ -21,17 +17,6 @@ export default function NamePlate3D({
         <boxGeometry args={[0.64, 0.016, 0.46]} />
         <meshStandardMaterial color="#f1f2f4" transparent opacity={opacity} />
       </mesh>
-      <Text
-        position={[0, 0.039, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.1}
-        color="#2f3033"
-        fillOpacity={opacity}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {name}
-      </Text>
     </group>
   );
 }
