@@ -224,7 +224,7 @@ export default function Home() {
           <li>Blog/news page with editable posts</li>
           <li>User-submitted project form with HTML sanitization</li>
           <li>BibTeX-driven publications page</li>
-          <li>People tag filters with "run away" behavior</li>
+          <li>People tag filters with &quot;run away&quot; behavior</li>
         </ul>
       </section>
       <div className="vignette" />
