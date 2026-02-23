@@ -297,7 +297,7 @@ export default function LandingScene3D({
   const customScrollRangeNdc = customBottomStopOverflowPx * sceneNdcPerPixelY;
   const bottomStopOverflowPx =
     activeLayoutPreset === 'custom' ? customBottomStopOverflowPx : regularBottomStopOverflowPx;
-  const OVERFLOW_EPSILON_PX = 1;
+  const OVERFLOW_EPSILON_PX = 500;
 
   // Scroll is enabled only when any character/nameplate overflows the stop boundary in screen pixels.
   const peopleScrollEnabled = isPeopleMode && bottomStopOverflowPx > OVERFLOW_EPSILON_PX;
