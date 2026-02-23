@@ -291,22 +291,25 @@ export default function LandingScene3D({
     activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxBottomPx)
       ? Math.max(0, customLayoutMaxBottomPx - triggerBottomPx)
       : 0;
+
   const customBottomStopOverflowPx =
     activeLayoutPreset === 'custom' && Number.isFinite(customLayoutMaxBottomPx)
       ? Math.max(0, customLayoutMaxBottomPx - stopBottomPx)
       : 0;
+
   const customScrollRangeNdc = customBottomStopOverflowPx * sceneNdcPerPixelY;
+
   const customPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset === 'custom' &&
-    customBottomStopOverflowPx > 0.5;
+    customBottomStopOverflowPx > 500;
 
   // Enable scroll interaction immediately in People mode whenever there is any meaningful scroll range.
   // This avoids waiting for nameplates to cross the viewport trigger line before responding to wheel/touch input.
   const regularPeopleScrollEnabled =
     isPeopleMode &&
     activeLayoutPreset !== 'custom' &&
-    maxPeopleRowOffsetForStop > 0.01;
+    maxPeopleRowOffsetForStop > 1;
 
   const peopleScrollEnabled = regularPeopleScrollEnabled || customPeopleScrollEnabled;
 
