@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * LandingScene3D.tsx
+ *
+ * This file defines the main 3D "landing scene" for the app. It renders the
+ * world, lights, environment props, draggable characters, and people-mode
+ * nameplates, and it coordinates the camera/tuning transitions between Home and
+ * People modes.
+ *
+ * Why `.tsx`?
+ * - `.ts` files are TypeScript without JSX.
+ * - `.tsx` files are TypeScript *with* JSX syntax.
+ *
+ * This component returns JSX (`<div>`, `<Canvas>`, `<mesh>`, etc.), so it must
+ * be in a `.tsx` file.
+ */
+
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Color } from 'three';
@@ -89,6 +105,8 @@ export default function LandingScene3D({
   onPeopleScrollEnabledChange,
   onDebugInfoChange,
 }: LandingScene3DProps) {
+  // WebGL availability gate: if unavailable, we skip mounting the 3D scene
+  // and report the runtime error to the parent.
   const [isWebGLAvailable, setIsWebGLAvailable] = useState<boolean | null>(null);
   const runtimeErrorHandlerRef = useRef(onRuntimeError);
 
@@ -113,6 +131,8 @@ export default function LandingScene3D({
   }, []);
 
   const orderedCharacters = useMemo(
+    // Stable ordering keeps layout assignments deterministic for a given set
+    // of character ids.
     () => [...characters].sort((a, b) => a.id.localeCompare(b.id)),
     [characters],
   );
@@ -123,6 +143,8 @@ export default function LandingScene3D({
   const [viewportHeightPx, setViewportHeightPx] = useState(900);
 
   useEffect(() => {
+    // Track viewport dimensions for responsive People layout variants and for
+    // screen-space projection math used by debug/scroll calculations.
     const update = () => {
       setIsNarrowViewport(window.innerWidth < 920);
       setViewportWidthPx(window.innerWidth);
@@ -139,6 +161,9 @@ export default function LandingScene3D({
 
   const peopleTargetTuning = tuning.peopleViewTuning;
 
+  // Blend base scene tuning -> people tuning during the mode transition.
+  // This drives camera, lighting, fog, offsets, and scale as one continuous
+  // interpolation parameter (peopleTransitionProgress: 0..1).
   const effectiveTuning = {
     cameraX: lerpNumber(tuning.cameraX, peopleTargetTuning.cameraX, peopleTransitionProgress),
     cameraY: lerpNumber(tuning.cameraY, peopleTargetTuning.cameraY, peopleTransitionProgress),
@@ -192,6 +217,9 @@ export default function LandingScene3D({
   );
 
   const getRegularLayoutBottommostScreenY = (rowOffset: number): number => {
+    // For regular grid/ring presets we compute where the *lowest* nameplate
+    // lands in screen pixels so we can decide if extra vertical scrolling is
+    // needed to keep the lineup readable.
     let maxBottomPx = Number.NEGATIVE_INFINITY;
 
     for (let index = 0; index < orderedCharacters.length; index += 1) {
@@ -247,6 +275,8 @@ export default function LandingScene3D({
 
   let maxPeopleRowOffsetForStop = maxPeopleRowOffset;
   if (activeLayoutPreset !== 'custom' && Number.isFinite(peopleLayoutBottommostPxAtRest) && peopleLayoutBottommostPxAtRest > stopBottomPx) {
+    // Binary search for the largest row offset that still keeps lineup bottoms
+    // above the visual stop boundary.
     let low = 0;
     let high = maxPeopleRowOffset;
     for (let iteration = 0; iteration < 16; iteration += 1) {
@@ -265,6 +295,8 @@ export default function LandingScene3D({
 
   let customLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
   if (activeLayoutPreset === 'custom') {
+    // In custom mode, we project each custom override directly and derive the
+    // bottom-most nameplate screen position from those coordinates.
     for (const character of orderedCharacters) {
       const [baseX, baseY, baseZ] = character.config.position;
       const override = tuning.peopleCharacterOverrides[character.id] ?? { x: baseX, y: baseY, z: baseZ, scale: 1 };
@@ -324,6 +356,8 @@ export default function LandingScene3D({
 
 
   useEffect(() => {
+    // Animate mode transition progress with requestAnimationFrame so 3D values
+    // update smoothly over time.
     const target = isPeopleMode ? 1 : 0;
     const startProgress = peopleTransitionProgress;
     const delta = target - startProgress;
@@ -359,6 +393,9 @@ export default function LandingScene3D({
 
   useEffect(() => {
     if (!onDebugInfoChange) return;
+
+    // Emit a detailed per-nameplate snapshot in world, NDC, and screen space.
+    // This powers tuning/debug overlays outside the 3D scene.
 
     const nameplates = orderedCharacters.map((character, index) => {
       const [baseX, baseY, baseZ] = character.config.position;
@@ -511,7 +548,8 @@ export default function LandingScene3D({
     const previousLayoutKey = previousLayoutKeyRef.current;
     previousLayoutKeyRef.current = layoutKey;
 
-    // Do not rerun when entering People mode; only rerun when layout settings change while already in People.
+    // Do not rerun when first entering People mode; rerun only when layout
+    // settings change while already settled in People mode.
     if (previousLayoutKey === null || peopleTransitionProgress < 0.999 || previousLayoutKey === layoutKey) {
       setRelayoutProgress(1);
       return;
@@ -540,6 +578,8 @@ export default function LandingScene3D({
   }
 
   return (
+    // scene-layer is a fixed-size world viewport that can be shifted with
+    // tuning offsets while remaining centered in the page layout.
     <div className="scene-layer" style={{
       width: `${tuning.sceneWorldWidthPx}px`,
       height: `${tuning.sceneWorldHeightPx}px`,
@@ -656,6 +696,8 @@ export default function LandingScene3D({
             ? customLineupTarget
             : projectedLineupTarget;
           const useCustomOverride = isCustomLayout && isPeopleMode && peopleTransitionProgress >= 0.999;
+          // In custom layout, final override values should only fully apply
+          // once transition completes; before that, we blend from home state.
           const activeOverride = useCustomOverride ? peopleOverride : homeOverride;
           const nameplateBasePosition = characterWorldPositions[character.id] ?? {
             x: lineupTarget.x,
@@ -674,6 +716,8 @@ export default function LandingScene3D({
 
           return (
             <group key={character.id}>
+              {/* Nameplates are only visible in People mode and fade in toward
+                  the end of the Home->People transition. */}
               {isPeopleMode && (
                 <NamePlate3D
                   name={character.name}
