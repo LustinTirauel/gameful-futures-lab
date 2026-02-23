@@ -44,30 +44,73 @@ function lerpNumber(from: number, to: number, progress: number): number {
   return from + (to - from) * progress;
 }
 
+/**
+ * Debug payload for a single character nameplate after projection.
+ *
+ * Coordinate spaces used here:
+ * - world*: 3D world coordinates inside the Three.js scene.
+ * - ndc*: Normalized Device Coordinates after camera projection.
+ *   NDC ranges from -1..1 where (0,0) is screen center.
+ * - screen*: pixel coordinates inside the `.scene-layer` rectangle.
+ *
+ * Example: `screenY` is the vertical pixel location of the *nameplate anchor*
+ * (not the bottom edge) in the scene layer. Larger screenY means lower on
+ * screen because DOM pixel coordinates grow downward.
+ */
 export type SceneDebugNameplateInfo = {
+  /** Character id used as stable key across renders. */
   id: string;
+  /** Display name rendered in the 3D nameplate. */
   name: string;
+  /** Nameplate anchor X in world space (Three.js units). */
   worldX: number;
+  /** Nameplate anchor Y in world space (Three.js units). */
   worldY: number;
+  /** Nameplate anchor Z in world space (Three.js units). */
   worldZ: number;
+  /** Projected X in NDC (-1 left, +1 right). */
   ndcX: number;
+  /** Projected Y in NDC (-1 bottom, +1 top). */
   ndcY: number;
+  /** Nameplate anchor X in scene-layer pixels. */
   screenX: number;
+  /** Nameplate anchor Y in scene-layer pixels. */
   screenY: number;
+  /** Bottom-edge Y in NDC used for overflow calculations. */
   bottomNdcY: number;
+  /** Bottom-edge Y in pixels used for trigger/stop logic. */
   screenBottomY: number;
 };
 
+/**
+ * Full debug snapshot emitted by `onDebugInfoChange`.
+ *
+ * This lets parent tooling compare where projected nameplates land relative to
+ * trigger/stop boundaries for scroll behavior.
+ */
 export type SceneDebugInfo = {
+  /** Current browser viewport width in pixels. */
   viewportWidthPx: number;
+  /** Current browser viewport height in pixels. */
   viewportHeightPx: number;
+  /** Top boundary of `.scene-layer` in screen pixels. */
   sceneLayerTopPx: number;
+  /** Bottom boundary of `.scene-layer` in screen pixels. */
   sceneLayerBottomPx: number;
+  /** Pixel line where custom-layout scroll starts being considered. */
   triggerBottomPx: number;
+  /** Pixel line the lineup should not exceed after compensation. */
   stopBottomPx: number;
+  /** Per-character projection/debug measurements. */
   nameplates: SceneDebugNameplateInfo[];
 };
 
+/**
+ * Public props for the landing 3D scene.
+ *
+ * The parent controls high-level mode + tuning, while this component handles
+ * frame-to-frame interpolation, projections, and 3D rendering details.
+ */
 type LandingScene3DProps = {
   characters: Array<{ id: string; name: string; config: CharacterConfig }>;
   movementBehavior?: MovementBehavior;
@@ -137,6 +180,7 @@ export default function LandingScene3D({
     [characters],
   );
 
+  // High-level mode switch used by transitions and conditional rendering.
   const isPeopleMode = mode === 'people';
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const [viewportWidthPx, setViewportWidthPx] = useState(1400);
@@ -154,6 +198,8 @@ export default function LandingScene3D({
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
+  // Transition timing is split into "turn" and "run" phases in tuning;
+  // we use the combined duration for the scene-level progress animation.
   const preRunTurnSeconds = tuning.preRunTurnSeconds;
   const runDurationSeconds = tuning.runDurationSeconds;
   const totalTransitionSeconds = Math.max(0.01, preRunTurnSeconds + runDurationSeconds);
@@ -189,6 +235,7 @@ export default function LandingScene3D({
     directionalLightY: lerpNumber(tuning.directionalLightY, peopleTargetTuning.directionalLightY, peopleTransitionProgress),
     directionalLightZ: lerpNumber(tuning.directionalLightZ, peopleTargetTuning.directionalLightZ, peopleTransitionProgress),
   };
+  // People layout can swap to a different preset/column count on narrow screens.
   const activeLayoutPreset = isNarrowViewport ? tuning.peopleLayoutPresetNarrow : tuning.peopleLayoutPreset;
   const activeLayoutColumns = isNarrowViewport ? tuning.peopleLayoutColumnsNarrow : tuning.peopleLayoutColumns;
   const totalRows = Math.max(1, Math.ceil(orderedCharacters.length / Math.max(1, activeLayoutColumns)));
@@ -197,6 +244,7 @@ export default function LandingScene3D({
   const stopAtScreenYpx = 600;
   const nameplateForwardOffset = 0.62;
   const nameplateBottomOffsetY = -0.025;
+  // Scene-layer rectangle converts between projected values and DOM pixels.
   const sceneLayerRect = getSceneLayerRect(
     viewportWidthPx,
     viewportHeightPx,
@@ -326,6 +374,8 @@ export default function LandingScene3D({
       ? Math.max(0, customLayoutMaxBottomPx - stopBottomPx)
       : 0;
 
+  // Convert custom-layout overflow (pixels) into NDC so scroll can be applied
+  // in projection space before mapping back to world coordinates.
   const customScrollRangeNdc = customBottomStopOverflowPx * sceneNdcPerPixelY;
   const bottomStopOverflowPx =
     activeLayoutPreset === 'custom' ? customBottomStopOverflowPx : regularBottomStopOverflowPx;
@@ -334,6 +384,8 @@ export default function LandingScene3D({
   // Scroll is enabled only when any character/nameplate overflows the stop boundary in screen pixels.
   const peopleScrollEnabled = isPeopleMode && bottomStopOverflowPx > OVERFLOW_EPSILON_PX;
 
+  // Palette interpolation keeps Home and People visually related while still
+  // allowing a clear mode shift. Colors are lerped below using transition progress.
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
   const peopleHueBase = useMemo(() => new Color(tuning.peopleHueColor), [tuning.peopleHueColor]);
@@ -533,6 +585,8 @@ export default function LandingScene3D({
     stopBottomPx,
   ]);
 
+  // Internal relayout progress is currently write-only from this component
+  // but retained to keep timing hooks aligned with draggable character behavior.
   const [, setRelayoutProgress] = useState(1);
   const previousLayoutKeyRef = useRef<string | null>(null);
 
@@ -628,6 +682,8 @@ export default function LandingScene3D({
           alpha={decorAlpha}
         />}
 
+        {/* Character render loop: compute per-character home + people targets,
+            then pass resolved values to DraggableCharacter for animation/state. */}
         {orderedCharacters.map((character, index) => {
           const [baseX, baseY, baseZ] = character.config.position;
           const [baseRotX, baseRotY, baseRotZ] = character.config.rotation;
