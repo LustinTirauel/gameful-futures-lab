@@ -240,6 +240,10 @@ export default function LandingScene3D({
 
   const peopleLayoutBottommostPxAtRest =
     activeLayoutPreset !== 'custom' ? getRegularLayoutBottommostScreenY(0) : Number.NEGATIVE_INFINITY;
+  const regularBottomStopOverflowPx =
+    activeLayoutPreset !== 'custom' && Number.isFinite(peopleLayoutBottommostPxAtRest)
+      ? Math.max(0, peopleLayoutBottommostPxAtRest - stopBottomPx)
+      : 0;
 
   let maxPeopleRowOffsetForStop = maxPeopleRowOffset;
   if (activeLayoutPreset !== 'custom' && Number.isFinite(peopleLayoutBottommostPxAtRest) && peopleLayoutBottommostPxAtRest > stopBottomPx) {
@@ -259,12 +263,6 @@ export default function LandingScene3D({
 
   const peopleRowOffset = peopleScrollProgress * maxPeopleRowOffsetForStop;
 
-  const peopleLayoutOverflowsViewport =
-    activeLayoutPreset !== 'custom' &&
-    Number.isFinite(peopleLayoutBottommostPxAtRest) &&
-    peopleLayoutBottommostPxAtRest > triggerBottomPx;
-
-  let customLayoutMinBottomY = Number.POSITIVE_INFINITY;
   let customLayoutMaxBottomPx = Number.NEGATIVE_INFINITY;
   if (activeLayoutPreset === 'custom') {
     for (const character of orderedCharacters) {
@@ -281,7 +279,6 @@ export default function LandingScene3D({
         peopleTargetTuning.cameraZ,
         peopleTargetTuning.fov,
       ).y;
-      customLayoutMinBottomY = Math.min(customLayoutMinBottomY, plateBottomNdc);
       const plateBottomPx = ndcToSceneLayerPixels(0, plateBottomNdc, sceneLayerRect).y;
       customLayoutMaxBottomPx = Math.max(customLayoutMaxBottomPx, plateBottomPx);
     }
@@ -298,20 +295,12 @@ export default function LandingScene3D({
       : 0;
 
   const customScrollRangeNdc = customBottomStopOverflowPx * sceneNdcPerPixelY;
+  const bottomStopOverflowPx =
+    activeLayoutPreset === 'custom' ? customBottomStopOverflowPx : regularBottomStopOverflowPx;
+  const OVERFLOW_EPSILON_PX = 500;
 
-  const customPeopleScrollEnabled =
-    isPeopleMode &&
-    activeLayoutPreset === 'custom' &&
-    customBottomStopOverflowPx > 500;
-
-  // Enable scroll interaction immediately in People mode whenever there is any meaningful scroll range.
-  // This avoids waiting for nameplates to cross the viewport trigger line before responding to wheel/touch input.
-  const regularPeopleScrollEnabled =
-    isPeopleMode &&
-    activeLayoutPreset !== 'custom' &&
-    maxPeopleRowOffsetForStop > 1;
-
-  const peopleScrollEnabled = regularPeopleScrollEnabled || customPeopleScrollEnabled;
+  // Scroll is enabled only when any character/nameplate overflows the stop boundary in screen pixels.
+  const peopleScrollEnabled = isPeopleMode && bottomStopOverflowPx > OVERFLOW_EPSILON_PX;
 
   const homeBg = useMemo(() => new Color('#112126'), []);
   const neutralPeopleBase = useMemo(() => new Color('#1d1d1f'), []);
